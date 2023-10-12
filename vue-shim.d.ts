@@ -1,6 +1,6 @@
 import services from '@/services';
 import Vue from 'vue';
-import { accessorType } from '@/store';
+import { accessorType } from '~/store';
 
 declare module '*.vue' {
     export default Vue;
