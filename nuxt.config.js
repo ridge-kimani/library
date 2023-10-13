@@ -52,14 +52,14 @@ export default {
 
   publicRuntimeConfig: {
     axios: {
-      baseURL: process.env.BASEURL || 'http://0.0.0.0:5000'
+      baseURL: process.env.BASEURL || 'http://127.0.0.1:5000'
     }
   },
 
   // Axios module configuration: https://go.nuxtjs.dev/config-axios
   axios: {
     // Workaround to avoid enforcing hard-coded localhost:3000: https://github.com/nuxt-community/axios-module/issues/308
-    baseURL: process.env.NODE_ENV === 'development' ? 'http://0.0.0.0:5000' : process.env.BASEURL
+    baseURL: process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:5000' : process.env.BASEURL
   },
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
