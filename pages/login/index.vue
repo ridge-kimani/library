@@ -1,12 +1,7 @@
 <template>
-  <div v-if='!loading'>
+  <div v-if="!loading">
     <b-form @submit="submit" @reset="reset">
-      <b-form-group
-        id="input-username"
-        label="Username:"
-        label-for="input-username"
-        description="We'll never share your email with anyone else."
-      >
+      <b-form-group id="input-username" label="Username:" label-for="input-username" invalid-feedback="usernameError">
         <b-form-input id="input-1" v-model="username" type="text" placeholder="Enter username" required></b-form-input>
       </b-form-group>
 
@@ -17,6 +12,7 @@
           type="password"
           placeholder="Enter password"
           required
+          invalid-feedback="passwordError"
         ></b-form-input>
       </b-form-group>
 
@@ -27,7 +23,9 @@
 </template>
 
 <script>
-import { mapActions, mapMutations } from 'vuex';
+import { mapActions, mapMutations, mapGetters } from 'vuex';
+import { get } from 'lodash'
+
 export default {
   name: 'Login',
 
@@ -39,24 +37,32 @@ export default {
   }),
 
   async mounted() {
-    this.loading = true
+    this.loading = true;
 
     try {
-      const response = await this.$localforage.getItem('author') || {};
+      const response = (await this.$localforage.getItem('author')) || {};
       if (response.token) {
         this.SET_USER(response);
         return this.$router.push('/');
       }
     } catch (e) {
-       this.SET_USER({});
+      this.SET_USER({});
     }
-    this.loading = false
+    this.loading = false;
+  },
+
+  computed: {
+    usernameError: () => get(this.error, 'username', ''),
+
+    passwordError: () => get(this.error, 'password', '')
   },
 
   methods: {
     ...mapActions(['login', 'getAuthStatus']),
 
     ...mapMutations(['SET_USER']),
+
+    ...mapGetters(['errors']),
 
     reset() {
       this.username = '';
@@ -65,13 +71,17 @@ export default {
 
     async submit(event) {
       event.preventDefault();
+      this.error = {};
 
       try {
         const response = await this.login({ username: this.username, password: this.password });
         await this.$localforage.setItem('author', response);
-        return this.$router.push('/')
+        return this.$router.push('/');
       } catch (e) {
-        console.log({ e: e.toJSON() });
+        console.log(this.errors());
+        this.error = {
+          ...this.errors()
+        };
       }
     }
   }

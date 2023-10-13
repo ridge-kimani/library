@@ -3,6 +3,24 @@ import Vuex from 'vuex';
 
 Vue.use(Vuex);
 
+const errors = {
+  200: {
+    message: ''
+  },
+
+  401: {
+    message: 'Password is incorrect',
+    field: 'password'
+  },
+
+  404: {
+    message: 'Username not found',
+    field: 'username'
+  }
+}
+
+const getCode = (str) => str.match(/\d+$/)[0];
+
 const authDefaults = {
   error: {
     message: null,
@@ -34,34 +52,48 @@ export default () => new Vuex.Store({
       }
     },
 
-    SET_ERROR({ auth }, payload) {
-      auth = {
+    RESET_AUTH(state) {
+      state.auth = {
+        ...authDefaults
+      }
+    },
+
+    SET_ERROR(state, error) {
+      state.auth = {
         ...authDefaults,
-        error: {
-          message: '',
-          code: ''
-        }
+        error
       }
     }
   },
   actions: {
     async login({ commit }, data) {
       try {
+        commit('RESET_AUTH')
         const response = await this.$axios.$post('/authors/login', data);
         commit('SET_USER', response)
         return response
       } catch (e) {
+        const code = parseInt(getCode(e.message))
+        const { message, field } = errors[code]
         commit('SET_ERROR', {
-          message: '',
-          code: ''
+          [field]: message,
+          code
         })
+        throw e
       }
     },
 
     async getAuthStatus({ commit }) {
-      const response = await this.$localforage.getItem('author')
-      commit('SET_USER', response)
-      return response
+      try {
+        const response = await this.$localforage.getItem('author')
+        commit('SET_USER', response)
+        return response
+      } catch (e) {
+        commit('SET_USER', authDefaults)
+      }
     }
+  },
+  getters: {
+    errors: (state) => state.auth.error
   }
 });
