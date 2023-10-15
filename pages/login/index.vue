@@ -1,30 +1,50 @@
 <template>
-  <div v-if="!loading">
-    <b-form @submit="submit" @reset="reset">
-      <b-form-group id="input-username" label="Username:" label-for="input-username" invalid-feedback="usernameError">
-        <b-form-input id="input-1" v-model="username" type="text" placeholder="Enter username" required></b-form-input>
-      </b-form-group>
+  <b-container v-if="!loading" fluid class="vh-100">
+    <b-row class="h-100">
+      <b-col class="my-auto">
+        <div class="text-center">Sign In</div>
+        <b-form @submit="submit" class="mt-5">
+          <b-form-group id="input-username" label="Username:" label-for="input-username">
+            <b-form-input
+              id="input-1"
+              v-model="username"
+              type="text"
+              placeholder="Enter username"
+              required
+            ></b-form-input>
+            <b-form-invalid-feedback :state="_get('error.field') === 'username'">
+              {{ error.field === 'username' ? error.detail : '' }}
+            </b-form-invalid-feedback>
+          </b-form-group>
 
-      <b-form-group id="input-password-group" label="Password:" label-for="input-password">
-        <b-form-input
-          id="input-password"
-          v-model="password"
-          type="password"
-          placeholder="Enter password"
-          required
-          invalid-feedback="passwordError"
-        ></b-form-input>
-      </b-form-group>
+          <b-form-group id="input-password-group" label="Password:" label-for="input-password">
+            <b-form-input
+              id="input-password"
+              v-model="password"
+              type="password"
+              placeholder="Enter password"
+              required
+            ></b-form-input>
+            <b-form-invalid-feedback :state="_get('error.field') === 'password'">
+              {{ error.field === 'password' ? error.detail : '' }}
+            </b-form-invalid-feedback>
+          </b-form-group>
 
-      <b-button type="submit" variant="primary">Submit</b-button>
-      <b-button type="reset" variant="danger">Reset</b-button>
-    </b-form>
-  </div>
+          <b-button type="submit" variant="success">Submit</b-button>
+        </b-form>
+      </b-col>
+      <b-col>
+        <div class="image-container">
+          <img src="~/assets/library.png" class="img-fluid" />
+        </div>
+      </b-col>
+    </b-row>
+  </b-container>
 </template>
 
 <script>
-import { mapActions, mapMutations, mapGetters } from 'vuex';
-import { get } from 'lodash'
+import { mapActions, mapMutations, mapGetters, mapState } from 'vuex';
+import { get } from 'lodash';
 
 export default {
   name: 'Login',
@@ -32,13 +52,15 @@ export default {
   data: () => ({
     username: '',
     password: '',
-    error: {},
+    error: {
+      field: '',
+      detail: ''
+    },
     loading: true
   }),
 
   async mounted() {
     this.loading = true;
-
     try {
       const response = (await this.$localforage.getItem('author')) || {};
       if (response.token) {
@@ -52,9 +74,17 @@ export default {
   },
 
   computed: {
-    usernameError: () => get(this.error, 'username', ''),
+    ...mapState(['auth'])
 
-    passwordError: () => get(this.error, 'password', '')
+  },
+
+  watch: {
+    auth: {
+      deep: true,
+      handler(prev, next) {
+        this.error = this.auth.error;
+      }
+    }
   },
 
   methods: {
@@ -64,9 +94,8 @@ export default {
 
     ...mapGetters(['errors']),
 
-    reset() {
-      this.username = '';
-      this.password = '';
+    _get(obj, reference, fallback) {
+      return get(obj, reference, fallback);
     },
 
     async submit(event) {
@@ -87,4 +116,14 @@ export default {
   }
 };
 </script>
-<style scoped></style>
+<style scoped>
+.image-container {
+  height: 100%;
+  overflow: hidden;
+}
+.image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* This will maintain the image's aspect ratio while covering the container */
+}
+</style>
