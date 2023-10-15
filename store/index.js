@@ -4,9 +4,6 @@ import { get } from 'lodash'
 
 Vue.use(Vuex);
 
-
-const getCode = (str) => str.match(/\d+$/)[0];
-
 const authDefaults = {
   error: {
     detail: null,
