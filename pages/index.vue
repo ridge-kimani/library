@@ -25,7 +25,7 @@
           </div>
         </b-modal>
 
-        <b-modal id="add-book" title="Add Book" @ok="addBook">
+        <b-modal id="add-book" title="Add Book" @ok="addBook" @cancel='resetBook'>
           <div>
             <b-form>
               <b-form-group id="title-group" label="Title:" label-for="title">
