@@ -1,30 +1,17 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
+import { get } from 'lodash'
 
 Vue.use(Vuex);
 
-const errors = {
-  200: {
-    message: ''
-  },
-
-  401: {
-    message: 'Password is incorrect',
-    field: 'password'
-  },
-
-  404: {
-    message: 'Username not found',
-    field: 'username'
-  }
-}
 
 const getCode = (str) => str.match(/\d+$/)[0];
 
 const authDefaults = {
   error: {
-    message: null,
-    code: null
+    detail: null,
+    status: null,
+    field: null
   },
   success: {
     message: null,
@@ -69,15 +56,15 @@ export default () => new Vuex.Store({
     async login({ commit }, data) {
       try {
         commit('RESET_AUTH')
-        const response = await this.$axios.$post('/authors/login', data);
+        const response = await this.$axios.$post('/users/login', data);
         commit('SET_USER', response)
         return response
       } catch (e) {
-        const code = parseInt(getCode(e.message))
-        const { message, field } = errors[code]
+        const { field, detail } = get(e, 'response.data', {})
         commit('SET_ERROR', {
-          [field]: message,
-          code
+          detail,
+          status: get(e, 'response.status', 400),
+          field
         })
         throw e
       }
