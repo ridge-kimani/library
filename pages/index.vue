@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div v-if="!loading">
     <b-nav tabs align="center">
       <b-nav-item active>Authors</b-nav-item>
       <b-nav-item>Books</b-nav-item>
@@ -11,7 +11,7 @@
       <div>
         <b-button variant="success" v-b-modal.add-author>Add Author</b-button>
 
-        <b-modal id="add-author" title="Add Author" @cancel='cancel'>
+        <b-modal id="add-author" title="Add Author" @cancel="cancel" @ok="saveAuthor">
           <div>
             <b-form>
               <b-form-group id="name-group" label="Name:" label-for="name">
@@ -25,7 +25,7 @@
           </div>
         </b-modal>
 
-        <b-modal id="add-book" title="Add Book" @ok="addBook" @cancel='resetBook'>
+        <b-modal id="add-book" title="Add Book" @ok="addBook" @cancel="resetBook">
           <div>
             <b-form>
               <b-form-group id="title-group" label="Title:" label-for="title">
@@ -56,7 +56,9 @@
   </div>
 </template>
 <script>
+
 import Navbar from '~/components/navbar.vue';
+import { mapActions, mapMutations } from 'vuex';
 
 export default {
   components: {
@@ -73,13 +75,69 @@ export default {
       cost: '',
       year: '',
       pages: ''
-    }
+    },
+    loading: true,
+    authorsActive: false,
+    booksActive: false
   }),
 
+  async mounted() {
+    this.loading = true;
+    try {
+      const response = await this.$localforage.getItem('user');
+      if (!response.token) {
+        this.SET_USER({});
+        return this.$router.push('/login');
+      }
+      this.SET_USER({
+        token: response.token,
+        user: response.user
+      });
+    } catch (e) {
+      this.SET_USER({});
+    }
+    this.loading = false;
+  },
+
   methods: {
+    ...mapActions(['addBooks', 'addAuthor', 'getAuthStatus']),
+
+    ...mapMutations(['SET_USER']),
+
     addBook() {
       this.items.push({ ...this.book, author: this.name });
       this.resetBook();
+    },
+
+    async saveAuthor() {
+      try {
+        const [first_name, last_name] = this.name.split(' ');
+        const { author } = await this.addAuthor({
+          first_name: first_name,
+          last_name: last_name
+        });
+
+        const books = this.items.filter(item => item.title).reduce((acc, value) => {
+          if (!acc) acc = []
+          acc.push({
+            title: value.title,
+            isbn: value.isbn,
+            cost: value.cost || 0,
+            publish_year: value.year || 0,
+            pages: value.pages || 0
+          })
+          return acc
+        }, [])
+
+        if (books.length) {
+          await this.addBooks({ author, books });
+
+        }
+      } catch (e) {
+        console.log(e)
+      } finally {
+        this.cancel()
+      }
     },
 
     resetBook() {
@@ -89,21 +147,21 @@ export default {
         cost: '',
         year: '',
         pages: ''
-      }
+      };
     },
 
     resetItems() {
-      this.items = [{}]
+      this.items = [{}];
     },
 
     resetAuthor() {
-      this.name = ''
+      this.name = '';
     },
 
     cancel() {
-      this.resetItems()
-      this.resetBook()
-      this.resetAuthor()
+      this.resetItems();
+      this.resetBook();
+      this.resetAuthor();
     }
   },
 

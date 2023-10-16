@@ -35,7 +35,7 @@
       </b-col>
       <b-col>
         <div class="image-container">
-          <img src="~/assets/library.png" class="img-fluid" />
+          <img alt="" src="~/assets/library.png" class="img-fluid" />
         </div>
       </b-col>
     </b-row>
@@ -62,7 +62,7 @@ export default {
   async mounted() {
     this.loading = true;
     try {
-      const response = (await this.$localforage.getItem('author')) || {};
+      const response = (await this.$localforage.getItem('user')) || {};
       if (response.token) {
         this.SET_USER(response);
         return this.$router.push('/');
@@ -104,10 +104,9 @@ export default {
 
       try {
         const response = await this.login({ username: this.username, password: this.password });
-        await this.$localforage.setItem('author', response);
+        await this.$localforage.setItem('user', response);
         return this.$router.push('/');
       } catch (e) {
-        console.log(this.errors());
         this.error = {
           ...this.errors()
         };
@@ -124,6 +123,6 @@ export default {
 .image-container img {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* This will maintain the image's aspect ratio while covering the container */
+  object-fit: cover;
 }
 </style>
