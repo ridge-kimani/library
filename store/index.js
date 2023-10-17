@@ -24,25 +24,56 @@ const authDefaults = {
 const authorDefaults = {
   ...statusDefaults,
   author: {
-    name: null
+    name: null,
+    id: null,
+    books: [{}]
   }
-};
-const booksDefaults = {
-  ...statusDefaults,
-  books: [{}]
 };
 
 const authorsDefaults = {
   ...statusDefaults,
   authors: [{}]
-}
+};
+
+const booksDefaults = {
+  ...statusDefaults,
+  books: [{}]
+};
+
+const bookDefaults = {
+  ...statusDefaults,
+  book: {
+    title: null,
+    isbn: null
+  }
+};
+
+const baseState = {
+  auth: {},
+  book: {},
+  books: {},
+  authors: {},
+  author: {}
+};
+
+const success = {
+  ...baseState
+};
+
+const error = {
+  ...baseState
+};
 
 export default () =>
   new Vuex.Store({
     state: {
       auth: authDefaults,
-      books: booksDefaults,
-      authors: authorsDefaults
+      books: baseState.books,
+      authors: baseState.authors,
+      author: authorDefaults,
+      book: bookDefaults,
+      success,
+      error
     },
 
     mutations: {
@@ -70,6 +101,29 @@ export default () =>
           ...authDefaults,
           error
         };
+      },
+
+      SET_AUTHORS(state, data) {
+        state.authors = data;
+      },
+
+      SET_SUCCESS({ success }, payload) {
+        success = {
+          ...success,
+          payload
+        };
+      },
+
+      SET_BOOKS_BY_AUTHOR(state, data) {
+        state.author = {
+          ...data
+        }
+      },
+
+      SET_BOOKS(state, data) {
+        state.books = {
+          ...data
+        }
       }
     },
 
@@ -112,9 +166,9 @@ export default () =>
               }
             }
           );
-         return data
+          return data;
         } catch (e) {
-          console.log({ e })
+          console.log({ e });
         }
       },
 
@@ -129,9 +183,78 @@ export default () =>
               }
             }
           );
-          return data
+          return data;
         } catch (e) {
-          console.log({ e })
+          console.log({ e });
+        }
+      },
+
+      async getAuthors({ commit, state }) {
+        try {
+          const {
+            data: { authors, detail },
+            status
+          } = await this.$axios.get('/authors', {
+            headers: {
+              Authorization: `Bearer ${state.auth.token}`
+            }
+          });
+          commit('SET_AUTHORS', authors);
+          commit('SET_SUCCESS', {
+            authors: {
+              detail,
+              status
+            }
+          });
+          return authors;
+        } catch (e) {
+          console.log({ e });
+        }
+      },
+
+      async getBooks({ commit, state }) {
+        try {
+          const {
+            data: { books, detail },
+            status
+          } = await this.$axios.get('/users/books', {
+            headers: {
+              Authorization: `Bearer ${state.auth.token}`
+            }
+          });
+          commit('SET_BOOKS', books);
+          commit('SET_SUCCESS', {
+            books: {
+              detail,
+              status
+            }
+          });
+          return books;
+        } catch (e) {
+          console.log({ e });
+        }
+      },
+
+      async getBooksByAuthor({ commit, state }, author) {
+        try {
+          const {
+            data: { books, detail },
+            status
+          } = await this.$axios.get(`/authors/${author.id}/books`, {
+            headers: {
+              Authorization: `Bearer ${state.auth.token}`
+            }
+          });
+          commit('SET_BOOKS_BY_AUTHOR', { ...author, books });
+          commit('SET_SUCCESS', {
+            author: {
+              detail,
+              status
+            }
+          });
+          return books;
+        } catch (e) {
+          console.log({ e });
         }
       }
     },
