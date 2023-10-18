@@ -43,7 +43,7 @@
 </template>
 
 <script>
-import { mapActions, mapMutations, mapGetters, mapState } from 'vuex';
+import { mapActions, mapMutations, mapState } from 'vuex';
 import { get } from 'lodash';
 
 export default {

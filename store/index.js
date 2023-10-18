@@ -4,23 +4,6 @@ import { get } from 'lodash';
 
 Vue.use(Vuex);
 
-const statusDefaults = {
-  error: {
-    detail: null,
-    status: null,
-    field: null
-  },
-  success: {
-    message: null,
-    status: null
-  }
-};
-const authDefaults = {
-  ...statusDefaults,
-  token: null,
-  user: {}
-};
-
 const baseState = {
   auth: {
     token: null,
@@ -30,19 +13,27 @@ const baseState = {
     title: null,
     isbn: null
   },
-  books: {},
-  authors: {},
+  books: [],
+  authors: [],
   author: {
     books: []
   }
 };
 
 const baseSuccess = {
-  ...baseState
+  auth: {},
+  book: {},
+  books: {},
+  authors: {},
+  author: {}
 };
 
 const baseError = {
-  ...baseState
+  auth: {},
+  book: {},
+  books: {},
+  authors: {},
+  author: {}
 };
 
 export default () =>
@@ -61,8 +52,8 @@ export default () =>
       SET_SUCCESS(state, { config, payload }) {
         state.success = {
           ...state.success,
-          [config]: payload,
-        }
+          [config]: payload
+        };
       },
 
       SET_ERROR(state, { config, payload }) {
@@ -75,7 +66,30 @@ export default () =>
       RESET_ERRORS(state) {
         state.error = {
           ...baseState
-        }
+        };
+      },
+
+      RESET_SUCCESS(state) {
+        state.success = {
+          ...baseState
+        };
+      },
+
+      RESET_STATE(state, { config }) {
+        state[config] = {
+          ...baseState[config]
+        };
+      },
+
+      RESET_RESPONSES(state, { config }) {
+        state.success = {
+          ...state.success,
+          [config]: {}
+        };
+        state.error = {
+          ...state.error,
+          [config]: {}
+        };
       },
 
       SET_USER({ auth }, payload) {
@@ -83,9 +97,10 @@ export default () =>
         auth.user = payload.user;
       },
 
-      RESET_STATE(state, { config }) {
-        state[config] = {
-          ...baseState[config]
+      SET_SELECTED_AUTHOR({ author }, payload) {
+        author = {
+          ...author,
+          payload
         };
       },
 
@@ -108,8 +123,8 @@ export default () =>
 
     actions: {
       async login({ commit }, data) {
-        commit('RESET_STATE', { config: 'auth'});
-        commit('RESET_ERRORS')
+        commit('RESET_RESPONSES', { config: 'auth' });
+        commit('RESET_ERRORS');
 
         try {
           const response = await this.$axios.$post('/users/login', data);
@@ -119,7 +134,7 @@ export default () =>
               detail: response.detail,
               status: 200
             }
-          })
+          });
           commit('SET_USER', response);
           return response;
         } catch (e) {
@@ -137,12 +152,64 @@ export default () =>
       },
 
       async getAuthStatus({ commit }) {
+        commit('RESET_RESPONSES', { config: 'auth' });
         try {
           const response = await this.$localforage.getItem('user');
           commit('SET_USER', response);
+          commit('SET_SUCCESS', {
+            config: 'auth',
+            payload: {
+              detail: 'Authenticated successful.',
+              status: 200
+            }
+          });
           return response;
         } catch (e) {
-          commit('SET_USER', authDefaults);
+          commit('SET_USER', {});
+          commit('SET_ERROR', {
+            config: 'auth',
+            payload: {
+              detail: 'Authentication unsuccessful.',
+              status: get(e, 'response.status', 400)
+            }
+          });
+          throw e;
+        }
+      },
+
+      async getAuthors({ commit, state }) {
+        commit('RESET_RESPONSES', { config: 'authors' });
+        try {
+          const {
+            data: { authors, detail },
+            status
+          } = await this.$axios.get('/authors', {
+            headers: {
+              Authorization: `Bearer ${state.auth.token}`
+            }
+          });
+          commit(
+            'SET_AUTHORS',
+            authors.map((author, index) => ({ ...author, id: index + 1, author_id: author.id }))
+          );
+          commit('SET_SUCCESS', {
+            config: 'authors',
+            payload: {
+              detail,
+              status
+            }
+          });
+          return authors;
+        } catch (e) {
+          const { detail } = get(e, 'response.data', {});
+          commit('SET_ERROR', {
+            config: 'authors',
+            payload: {
+              detail,
+              status: get(e, 'response.status', 400)
+            }
+          });
+          throw e;
         }
       },
 
@@ -150,7 +217,7 @@ export default () =>
         try {
           const { data } = await this.$axios.post(
             '/authors',
-            { ...author, created_by: get(state, 'auth.user.id') },
+            { ...author },
             {
               headers: {
                 Authorization: `Bearer ${state.auth.token}`
@@ -180,32 +247,6 @@ export default () =>
         }
       },
 
-      async getAuthors({ commit, state }) {
-        try {
-          const {
-            data: { authors, detail },
-            status
-          } = await this.$axios.get('/authors', {
-            headers: {
-              Authorization: `Bearer ${state.auth.token}`
-            }
-          });
-          commit(
-            'SET_AUTHORS',
-            authors.map((author, index) => ({ ...author, id: index + 1, author_id: author.id }))
-          );
-          commit('SET_SUCCESS', {
-            authors: {
-              detail,
-              status
-            }
-          });
-          return authors;
-        } catch (e) {
-          console.log({ e });
-        }
-      },
-
       async getBooks({ commit, state }) {
         try {
           const {
@@ -230,11 +271,12 @@ export default () =>
       },
 
       async getBooksByAuthor({ commit, state }, author) {
+        commit('RESET_STATE', { config: 'author' });
         try {
           const {
             data: { books, detail },
             status
-          } = await this.$axios.get(`/authors/${author.id}/books`, {
+          } = await this.$axios.get(`/authors/${author.author_id}/books`, {
             headers: {
               Authorization: `Bearer ${state.auth.token}`
             }
