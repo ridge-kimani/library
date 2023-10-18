@@ -13,7 +13,7 @@
               required
             ></b-form-input>
             <b-form-invalid-feedback :state="_get('error.field') === 'username'">
-              {{ error.field === 'username' ? error.detail : '' }}
+              {{ error.auth.field === 'username' ? error.auth.detail : '' }}
             </b-form-invalid-feedback>
           </b-form-group>
 
@@ -26,7 +26,7 @@
               required
             ></b-form-input>
             <b-form-invalid-feedback :state="_get('error.field') === 'password'">
-              {{ error.field === 'password' ? error.detail : '' }}
+              {{ error.auth.field === 'password' ? error.auth.detail : '' }}
             </b-form-invalid-feedback>
           </b-form-group>
 
@@ -52,15 +52,14 @@ export default {
   data: () => ({
     username: '',
     password: '',
-    error: {
-      field: '',
-      detail: ''
-    },
     loading: true
   }),
 
   async mounted() {
+    this.RESET_ERRORS();
+
     this.loading = true;
+
     try {
       const response = (await this.$localforage.getItem('user')) || {};
       if (response.token) {
@@ -74,24 +73,13 @@ export default {
   },
 
   computed: {
-    ...mapState(['auth'])
-  },
-
-  watch: {
-    auth: {
-      deep: true,
-      handler(prev, next) {
-        this.error = this.auth.error;
-      }
-    }
+    ...mapState(['error'])
   },
 
   methods: {
     ...mapActions(['login', 'getAuthStatus']),
 
-    ...mapMutations(['SET_USER']),
-
-    ...mapGetters(['errors']),
+    ...mapMutations(['SET_USER', 'RESET_ERRORS']),
 
     _get(obj, reference, fallback) {
       return get(obj, reference, fallback);
@@ -99,16 +87,14 @@ export default {
 
     async submit(event) {
       event.preventDefault();
-      this.error = {};
+      this.RESET_ERRORS();
 
       try {
         const response = await this.login({ username: this.username, password: this.password });
         await this.$localforage.setItem('user', response);
         return this.$router.push('/');
       } catch (e) {
-        this.error = {
-          ...this.errors()
-        };
+        return e;
       }
     }
   }

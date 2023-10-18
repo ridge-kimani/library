@@ -21,85 +21,71 @@ const authDefaults = {
   user: {}
 };
 
-const authorDefaults = {
-  ...statusDefaults,
-  author: {
-    name: null,
-    id: null,
-    books: [{}]
-  }
-};
-
-const authorsDefaults = {
-  ...statusDefaults,
-  authors: [{}]
-};
-
-const booksDefaults = {
-  ...statusDefaults,
-  books: [{}]
-};
-
-const bookDefaults = {
-  ...statusDefaults,
+const baseState = {
+  auth: {
+    token: null,
+    user: {}
+  },
   book: {
     title: null,
     isbn: null
+  },
+  books: {},
+  authors: {},
+  author: {
+    books: []
   }
 };
 
-const baseState = {
-  auth: {},
-  book: {},
-  books: {},
-  authors: {},
-  author: {}
-};
-
-const success = {
+const baseSuccess = {
   ...baseState
 };
 
-const error = {
+const baseError = {
   ...baseState
 };
 
 export default () =>
   new Vuex.Store({
     state: {
-      auth: authDefaults,
+      auth: baseState.auth,
       books: baseState.books,
       authors: baseState.authors,
-      author: authorDefaults,
-      book: bookDefaults,
-      success,
-      error
+      author: baseState.author,
+      book: baseState.book,
+      success: baseSuccess,
+      error: baseError
     },
 
     mutations: {
+      SET_SUCCESS(state, { config, payload }) {
+        state.success = {
+          ...state.success,
+          [config]: payload,
+        }
+      },
+
+      SET_ERROR(state, { config, payload }) {
+        state.error = {
+          ...state.error,
+          [config]: payload
+        };
+      },
+
+      RESET_ERRORS(state) {
+        state.error = {
+          ...baseState
+        }
+      },
+
       SET_USER({ auth }, payload) {
         auth.token = payload.token;
         auth.user = payload.user;
-        auth.success = {
-          message: payload.message,
-          status: payload.status
-        };
-        auth.error = {
-          message: null,
-          status: null
-        };
       },
 
-      RESET_AUTH(state) {
-        state.auth = {
-          ...authDefaults
-        };
-      },
-
-      SET_ERROR(state, error) {
-        state.auth = {
-          ...authDefaults,
-          error
+      RESET_STATE(state, { config }) {
+        state[config] = {
+          ...baseState[config]
         };
       },
 
@@ -107,39 +93,44 @@ export default () =>
         state.authors = data;
       },
 
-      SET_SUCCESS({ success }, payload) {
-        success = {
-          ...success,
-          payload
-        };
-      },
-
       SET_BOOKS_BY_AUTHOR(state, data) {
         state.author = {
           ...data
-        }
+        };
       },
 
       SET_BOOKS(state, data) {
         state.books = {
           ...data
-        }
+        };
       }
     },
 
     actions: {
       async login({ commit }, data) {
+        commit('RESET_STATE', { config: 'auth'});
+        commit('RESET_ERRORS')
+
         try {
-          commit('RESET_AUTH');
           const response = await this.$axios.$post('/users/login', data);
+          commit('SET_SUCCESS', {
+            config: 'auth',
+            payload: {
+              detail: response.detail,
+              status: 200
+            }
+          })
           commit('SET_USER', response);
           return response;
         } catch (e) {
           const { field, detail } = get(e, 'response.data', {});
           commit('SET_ERROR', {
-            detail,
-            status: get(e, 'response.status', 400),
-            field
+            config: 'auth',
+            payload: {
+              detail,
+              status: get(e, 'response.status', 400),
+              field
+            }
           });
           throw e;
         }
@@ -199,7 +190,10 @@ export default () =>
               Authorization: `Bearer ${state.auth.token}`
             }
           });
-          commit('SET_AUTHORS', authors);
+          commit(
+            'SET_AUTHORS',
+            authors.map((author, index) => ({ ...author, id: index + 1, author_id: author.id }))
+          );
           commit('SET_SUCCESS', {
             authors: {
               detail,

@@ -7,7 +7,7 @@
     <div>
       <b-form-input :id="`search`" type="search"></b-form-input>
     </div>
-    <div v-if="authorsActive"a>
+    <div v-if="authorsActive">
       <div>
         <b-button variant="success" @click="toggleAddAuthor">Add Author</b-button>
       </div>
@@ -114,7 +114,7 @@ export default {
 
   data: () => ({
     bookFields: ['title', 'author', 'isbn', 'pages', 'cost'],
-    authorsFields: ['id', 'name', 'count'],
+    authorsFields: ['id', 'name', 'author_id', 'count'],
     author: {
       name: '',
       id: ''
