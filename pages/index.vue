@@ -34,8 +34,8 @@
               :isBusy="loadingAuthors"
               :items="allAuthors"
               :fields="authorsFields"
-              :per-page="authorTable.perPage"
-              :current-page="authorTable.currentPage"
+              :per-page="authorTablePerPage"
+              :current-page="authorTableCurrentPage"
               selectable
               @row-clicked="authorRowClicked"
               v-b-modal.edit-author
@@ -49,10 +49,10 @@
             </b-table>
           </div>
           <b-pagination
-            class="justify-content-center mt-5"
-            v-model="authorTable.currentPage"
-            :total-rows="authorTable.rows"
-            :per-page="authorTable.perPage"
+            class="justify-content-center my-5"
+            v-model="authorTableCurrentPage"
+            :total-rows="authorTableRows"
+            :per-page="authorTablePerPage"
             aria-controls="author-table"
           ></b-pagination>
         </div>
@@ -68,17 +68,17 @@
               select-mode="single"
               :items="allBooks"
               :fields="bookFields"
-              :per-page="booksTable.perPage"
-              :current-page="booksTable.currentPage"
+              :per-page="booksTablePerPage"
+              :current-page="booksTableCurrentPage"
               selectable
               @row-clicked="bookRowClicked"
               v-b-modal.edit-author
             ></b-table>
             <b-pagination
               class="justify-content-center mt-5"
-              v-model="booksTable.currentPage"
-              :total-rows="booksTable.rows"
-              :per-page="booksTable.perPage"
+              v-model="booksTableCurrentPage"
+              :total-rows="booksTableRows"
+              :per-page="booksTablePerPage"
               aria-controls="books-table"
             ></b-pagination>
           </div>
@@ -93,13 +93,13 @@
         :title="authorModal.title"
         @cancel="cancel"
         @close="cancel"
-        @ok="handleOk"
+        @ok="handleAuthorOk"
       >
         <div>
-          <b-form @submit.stop.prevent="handleSubmit" ref="form">
+          <b-form @submit.stop.prevent="handleAuthorSubmit" ref="form">
             <b-form-group id="name-group" label="Name:" label-for="name">
               <b-form-input id="name" placeholder="Enter name" required v-model="author.name"></b-form-input>
-              <b-form-invalid-feedback v-if='formErrors.author.name' force-show>
+              <b-form-invalid-feedback v-if="formErrors.author.name" force-show>
                 Enter the author name
               </b-form-invalid-feedback>
             </b-form-group>
@@ -107,9 +107,7 @@
             <div class="my-4 d-flex">
               <b-button variant="outline-success" @click="toggleAddBook">Add Book</b-button>
             </div>
-            <div v-if='formErrors.author.books' class='text-danger error-message'>
-              Add at least one book
-            </div>
+            <div v-if="formErrors.author.books" class="text-danger error-message">Add at least one book</div>
             <b-table
               id="author-books-table"
               striped
@@ -117,8 +115,9 @@
               :items="allAuthorBooks"
               :fields="bookFields"
               :isBusy="loadingAuthorBooks"
-              :total-rows="authorBooksTable.rows"
-              :per-page="authorBooksTable.perPage"
+              :total-rows="authorBooksRows"
+              :per-page="authorBooksTablePerPage"
+              :current-page="authorBooksCurrentPage"
               selectable
               @row-clicked="bookRowClicked"
               v-b-modal.edit-book
@@ -132,9 +131,9 @@
             </b-table>
             <b-pagination
               class="justify-content-center mt-5"
-              v-model="authorBooksTable.currentPage"
-              :total-rows="authorBooksTable.rows"
-              :per-page="authorBooksTable.perPage"
+              v-model="authorBooksCurrentPage"
+              :total-rows="authorBooksRows"
+              :per-page="authorBooksTablePerPage"
               aria-controls="author-books-table"
             ></b-pagination>
           </b-form>
@@ -143,11 +142,23 @@
       <!-- -->
 
       <!-- Books Modal -->
-      <b-modal v-model="bookModal.show" :id="bookModal.id" :title="bookModal.title" @cancel="resetBook" @ok="saveBook">
+      <b-modal
+        v-model="bookModal.show"
+        :id="bookModal.id"
+        :title="bookModal.title"
+        @cancel="resetBook"
+        @ok="handleSaveBook"
+      >
         <div>
-          <b-form>
+          <b-form @submit.stop.prevent="submitBookModal" ref="book-modal">
             <b-form-group id="title-group" label="Title:" label-for="title">
               <b-form-input id="title" placeholder="Enter book title" required v-model="book.title"></b-form-input>
+              <b-form-invalid-feedback v-if="formErrors.books.title" force-show>
+                Enter the author name
+              </b-form-invalid-feedback>
+            </b-form-group>
+            <b-form-group id="author-select" label="Author:" label-for="author" v-if="booksActive">
+              <treeselect v-model="book.author" :multiple="false" :options="options" />
             </b-form-group>
             <b-form-group id="isbn-group" label="Isbn:" label-for="isbn">
               <b-form-input id="isbn" v-model="book.isbn" placeholder="ISBN"></b-form-input>
@@ -179,21 +190,17 @@ export default {
 
   data: () => ({
     // Pagination
-    authorTable: {
-      perPage: 10,
-      currentPage: 1,
-      rows: 1
-    },
-    booksTable: {
-      perPage: 25,
-      currentPage: 1,
-      rows: 1
-    },
-    authorBooksTable: {
-      perPage: 3,
-      currentPage: 1,
-      rows: 1
-    },
+    authorTablePerPage: 10,
+    authorTableCurrentPage: 1,
+    authorTableRows: 1,
+
+    authorBooksTablePerPage: 5,
+    authorBooksCurrentPage: 1,
+    authorBooksRows: 1,
+
+    booksTablePerPage: 10,
+    booksTableCurrentPage: 1,
+    booksTableRows: 1,
 
     // Search
     search: '',
@@ -230,7 +237,8 @@ export default {
       isbn: '',
       cost: '',
       year: '',
-      pages: ''
+      pages: '',
+      author: ''
     },
     bookModal: {
       selected: '',
@@ -251,8 +259,12 @@ export default {
 
     // Form Errors
     formErrors: {
-      author: {}
-    }
+      author: {},
+      books: {}
+    },
+
+    // Tree select
+    options: []
   }),
 
   async mounted() {
@@ -298,6 +310,10 @@ export default {
       handler(value, prev) {
         if (value !== prev && value.length) {
           this.allAuthors = [...value];
+          this.options = value.map((val) => ({
+            id: val.author_id,
+            label: val.name
+          }));
         }
       }
     },
@@ -314,28 +330,29 @@ export default {
     allAuthors: {
       deep: true,
       handler(value) {
-        this.authorTable.rows = value.length;
+        this.authorTableRows = value.length;
       }
     },
 
     allAuthorBooks: {
       deep: true,
       handler(values) {
-        this.authorBooksTable.rows = values.length;
-        this.formErrors.author.books = false
+        this.authorBooksRows = values.length;
+        this.formErrors.author.books = false;
       }
     },
 
     allBooks: {
       deep: true,
       handler(values) {
-        this.booksTable.rows = values.length;
+        this.booksTableRows = values.length;
       }
     },
+
     'author.name': {
       handler(value) {
         if (value) {
-          this.formErrors.author = { name: false }
+          this.formErrors.author = { name: false };
         }
       }
     }
@@ -353,6 +370,7 @@ export default {
         this.booksActive = true;
         await this.$router.push({ query: { tab: 'books' } });
         await this.getBooks();
+        await this.getAuthors();
       }
       if (value === 'authors') {
         this.loadingAuthors = true;
@@ -373,38 +391,81 @@ export default {
       };
     },
 
-    addAuthorBook() {
-      this.authorBooks.push({ ...this.book, author: this.name });
-      this.resetBook();
-    },
-
     checkAuthorForm() {
-      const valid = this.$refs.form.checkValidity()
-      const hasBooks = this.addedAuthorBooks.filter((item) => item.title).length
+      const valid = this.$refs.form.checkValidity();
+      const { selected } = this.authorModal;
       if (!valid) {
         this.formErrors.author = {
           name: true
-        }
-        return false
+        };
+        return false;
       }
-      if (!hasBooks) {
-        this.formErrors.author = {
-          books: true
+
+      if (this.authorsActive && selected === 'add-author') {
+        const hasBooks = this.addedAuthorBooks.filter((item) => item.title).length;
+        if (!hasBooks) {
+          this.formErrors.author = {
+            books: true
+          };
+          return false;
         }
-        return false
+        return true;
       }
-      return true
+      console.log('EDIT AUTHOR');
     },
 
-    handleSubmit(e) {
-      e.preventDefault()
-      return this.checkAuthorForm()
+    checkBookForm() {
+      const valid = this.$refs['book-modal'].checkValidity();
+      if (!valid) {
+        this.formErrors.books = {
+          title: true
+        };
+      }
+      return valid;
     },
 
-    handleOk(e) {
-      const valid = this.handleSubmit(e)
+    submitBookModal(e) {
+      e.preventDefault();
+      const valid = this.checkBookForm();
       if (valid) {
-        this.saveAuthor()
+        this.resetFormErrors();
+        this.bookModal = {};
+      }
+    },
+
+    handleSaveBook(e) {
+      const { selected } = this.bookModal;
+
+      if (this.authorsActive) {
+        if (selected === 'add-book') {
+          return (this.addedAuthorBooks = [
+            ...this.addedAuthorBooks,
+            {
+              ...this.book
+            }
+          ]);
+        }
+        console.log('EDIT BOOK');
+      }
+
+      if (this.booksActive) {
+        if (selected === 'add-book') {
+          console.log('ADD BOOK');
+          return true;
+        }
+        console.log('EDIT BOOK');
+      }
+    },
+
+    handleAuthorSubmit(e) {
+      e.preventDefault();
+      return this.checkAuthorForm();
+    },
+
+    handleAuthorOk(e) {
+      const valid = this.handleAuthorSubmit(e);
+      if (valid) {
+        this.saveAuthor();
       }
     },
 
@@ -460,6 +521,13 @@ export default {
       this.author.name = '';
     },
 
+    resetFormErrors() {
+      this.formErrors = {
+        author: {},
+        books: {}
+      };
+    },
+
     cancel() {
       this.authorModal = {};
       this.resetBook();
@@ -467,26 +535,7 @@ export default {
       this.addedAuthorBooks = [];
     },
 
-    async setAuthStatus() {
-      this.loading = true;
-      try {
-        const response = await this.$localforage.getItem('user');
-        if (!response.token) {
-          this.SET_USER({});
-          return this.$router.push('/login');
-        }
-        this.SET_USER({
-          token: response.token,
-          user: response.user
-        });
-      } catch (e) {
-        this.SET_USER({});
-        await this.$router.push('/login');
-      }
-      this.loading = false;
-    },
-
-    authorRowClicked(value, index) {
+    authorRowClicked(value) {
       this.SET_SELECTED_AUTHOR(value);
       this.author = {
         ...value
@@ -507,6 +556,7 @@ export default {
       this.author = {};
       this.authorBooks = [];
 
+      this.resetFormErrors();
       this.setAuthorModal({
         selected: 'add-author',
         id: 'add-author',
@@ -550,20 +600,31 @@ export default {
       });
     },
 
-    saveBook() {
-      this.addedAuthorBooks = [
-        ...this.addedAuthorBooks,
-        {
-          ...this.book
-        }
-      ];
-    },
-
     bookRowClicked(value, index) {
       this.book = {
-        ...value
+        ...value,
+        index
       };
       this.toggleEditBook();
+    },
+
+    async setAuthStatus() {
+      this.loading = true;
+      try {
+        const response = await this.$localforage.getItem('user');
+        if (!response.token) {
+          this.SET_USER({});
+          return this.$router.push('/login');
+        }
+        this.SET_USER({
+          token: response.token,
+          user: response.user
+        });
+      } catch (e) {
+        this.SET_USER({});
+        await this.$router.push('/login');
+      }
+      this.loading = false;
     },
 
     async logout() {
@@ -580,10 +641,6 @@ export default {
 }
 .pagination-items {
   margin-top: 10rem;
-}
-.page {
-  background-image: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%);
-  height: 100vh;
 }
 .error-message {
   font-size: 0.875em;
