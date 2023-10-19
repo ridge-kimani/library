@@ -31,7 +31,7 @@
               striped
               hover
               select-mode="single"
-              :items="authors"
+              :items="allAuthors"
               :fields="authorsFields"
               selectable
               @row-clicked="authorRowClicked"
@@ -157,6 +157,7 @@ export default {
   },
 
   data: () => ({
+    // Pagination
     authorTable: {
       perPage: 25,
       currentPage: 1,
@@ -167,32 +168,43 @@ export default {
       currentPage: 1,
       rows: 30
     },
+
+    // Search
     search: '',
+
+    // Table
     bookFields: ['title', 'author', 'isbn', 'pages', 'cost'],
     authorsFields: ['name', 'author_id', 'count'],
+
+    // BooksTable
+    allBooks: [],
+
+    // AuthorsTable
+    allAuthors: [],
+
+    // Author Modal
+    authorModal: {
+      selected: '',
+      id: '',
+      title: '',
+      show: false
+    },
+
+    // Author Modal State
     author: {
       name: '',
       id: ''
     },
     authorBooks: [],
-    books: [],
     addedAuthorBooks: [],
-    name: '',
+
+    // Book Modal State
     book: {
       title: '',
       isbn: '',
       cost: '',
       year: '',
       pages: ''
-    },
-    loading: true,
-    authorsActive: false,
-    booksActive: false,
-    authorModal: {
-      selected: '',
-      id: '',
-      title: '',
-      show: false
     },
     bookModal: {
       selected: '',
@@ -201,39 +213,64 @@ export default {
       action: null,
       show: false
     },
+
+    // Loader State
+    loading: true,
     loadingAuthorBooks: false,
-    allBooks: []
+
+    // Tab state
+    authorsActive: false,
+    booksActive: false
   }),
 
   async mounted() {
-    let { tab } = this.$route.query
+    let { tab } = this.$route.query;
 
     try {
       await this.setAuthStatus();
       await this.toggleTab(tab || 'authors');
     } catch (e) {
-        await this.logout()
+      await this.logout();
     }
-
   },
 
   computed: {
-    ...mapState(['authors']),
+    ...mapState(['authors', 'books']),
 
     searchPlaceholder() {
-      if (this.authorsActive) return "Search Author"
-      return "Search Book"
+      if (this.authorsActive) return 'Search Author';
+      return 'Search Book';
     }
   },
 
   watch: {
     search(val) {
-      if (this.authorsActive){
-        this.allAuthors = this.authors.filter(value => value.name.toLowerCase().includes(val))
+      if (this.authorsActive) {
+        this.allAuthors = this.authors.filter((value) => value.name.toLowerCase().includes(val.toLowerCase()));
+      }
+      if (this.booksActive) {
+        this.allBooks = this.books.filter((value) => value.title.toLowerCase().includes(val.toLowerCase()));
       }
     },
     authorsActive() {
-      this.search = ''
+      this.search = '';
+    },
+    authors: {
+      deep: true,
+      handler(value, prev) {
+        if (value !== prev && value.length) {
+          this.allAuthors = [...value];
+
+        }
+      }
+    },
+    books: {
+      deep: true,
+      handler(value, prev) {
+        if (value !== prev && value.length) {
+          this.allBooks = [...value]
+        }
+      }
     }
   },
 
@@ -246,13 +283,13 @@ export default {
       if (value === 'books') {
         this.authorsActive = false;
         this.booksActive = true;
-        await this.$router.push({ query: { tab: 'books' } })
-        this.allBooks = await this.getBooks();
+        await this.$router.push({ query: { tab: 'books' } });
+        await this.getBooks();
       }
       if (value === 'authors') {
         this.booksActive = false;
         this.authorsActive = true;
-        await this.$router.push({ query: { tab: 'authors' } })
+        await this.$router.push({ query: { tab: 'authors' } });
         await this.getAuthors();
       }
     },
@@ -327,7 +364,6 @@ export default {
       this.resetBook();
       this.resetAuthor();
       this.addedAuthorBooks = [];
-      this.books = [];
     },
 
     async setAuthStatus() {
@@ -344,7 +380,7 @@ export default {
         });
       } catch (e) {
         this.SET_USER({});
-        await this.$router.push('/login')
+        await this.$router.push('/login');
       }
       this.loading = false;
     },
@@ -431,7 +467,7 @@ export default {
 
     async logout() {
       await this.$localforage.setItem('user', {});
-      await this.$router.push('/login')
+      await this.$router.push('/login');
     }
   }
 };
