@@ -20,7 +20,7 @@
       </div>
       <div class="mx-10">
         <b-nav tabs align="center">
-          <b-nav-item :active="authorsActive" @click="toggleTab('author')">Authors</b-nav-item>
+          <b-nav-item :active="authorsActive" @click="toggleTab('authors')">Authors</b-nav-item>
           <b-nav-item :active="booksActive" @click="toggleTab('books')">Books</b-nav-item>
         </b-nav>
         <!-- Authors table   -->
@@ -206,11 +206,13 @@ export default {
   }),
 
   async mounted() {
+    let { tab } = this.$route.query
+
     try {
       await this.setAuthStatus();
-      await this.toggleTab('author');
+      await this.toggleTab(tab || 'authors');
     } catch (e) {
-
+        await this.logout()
     }
 
   },
@@ -244,11 +246,13 @@ export default {
       if (value === 'books') {
         this.authorsActive = false;
         this.booksActive = true;
+        await this.$router.push({ query: { tab: 'books' } })
         this.allBooks = await this.getBooks();
       }
-      if (value === 'author') {
+      if (value === 'authors') {
         this.booksActive = false;
         this.authorsActive = true;
+        await this.$router.push({ query: { tab: 'authors' } })
         await this.getAuthors();
       }
     },
