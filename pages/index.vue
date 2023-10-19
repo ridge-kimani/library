@@ -31,12 +31,22 @@
               striped
               hover
               select-mode="single"
+              :isBusy="loadingAuthors"
               :items="allAuthors"
               :fields="authorsFields"
+              :per-page="authorTable.perPage"
+              :current-page="authorTable.currentPage"
               selectable
               @row-clicked="authorRowClicked"
               v-b-modal.edit-author
-            ></b-table>
+            >
+              <template #table-busy>
+                <div class="text-center text-danger my-2">
+                  <b-spinner class="align-middle"></b-spinner>
+                  <strong>Loading...</strong>
+                </div>
+              </template>
+            </b-table>
           </div>
           <b-pagination
             class="justify-content-center mt-5"
@@ -58,6 +68,8 @@
               select-mode="single"
               :items="allBooks"
               :fields="bookFields"
+              :per-page="booksTable.perPage"
+              :current-page="booksTable.currentPage"
               selectable
               @row-clicked="bookRowClicked"
               v-b-modal.edit-author
@@ -81,23 +93,32 @@
         :title="authorModal.title"
         @cancel="cancel"
         @close="cancel"
-        @ok="saveAuthor"
+        @ok="handleOk"
       >
         <div>
-          <b-form>
+          <b-form @submit.stop.prevent="handleSubmit" ref="form">
             <b-form-group id="name-group" label="Name:" label-for="name">
               <b-form-input id="name" placeholder="Enter name" required v-model="author.name"></b-form-input>
+              <b-form-invalid-feedback v-if='formErrors.author.name' force-show>
+                Enter the author name
+              </b-form-invalid-feedback>
             </b-form-group>
-            <div class="my-4 d-flex justify-content-center">
+
+            <div class="my-4 d-flex">
               <b-button variant="outline-success" @click="toggleAddBook">Add Book</b-button>
+            </div>
+            <div v-if='formErrors.author.books' class='text-danger error-message'>
+              Add at least one book
             </div>
             <b-table
               id="author-books-table"
               striped
               hover
-              :items="[...authorBooks, ...addedAuthorBooks]"
+              :items="allAuthorBooks"
               :fields="bookFields"
               :isBusy="loadingAuthorBooks"
+              :total-rows="authorBooksTable.rows"
+              :per-page="authorBooksTable.perPage"
               selectable
               @row-clicked="bookRowClicked"
               v-b-modal.edit-book
@@ -111,9 +132,9 @@
             </b-table>
             <b-pagination
               class="justify-content-center mt-5"
-              v-model="authorTable.currentPage"
-              :total-rows="authorTable.rows"
-              :per-page="authorTable.perPage"
+              v-model="authorBooksTable.currentPage"
+              :total-rows="authorBooksTable.rows"
+              :per-page="authorBooksTable.perPage"
               aria-controls="author-books-table"
             ></b-pagination>
           </b-form>
@@ -159,14 +180,19 @@ export default {
   data: () => ({
     // Pagination
     authorTable: {
-      perPage: 25,
+      perPage: 10,
       currentPage: 1,
-      rows: 30
+      rows: 1
     },
     booksTable: {
       perPage: 25,
       currentPage: 1,
-      rows: 30
+      rows: 1
+    },
+    authorBooksTable: {
+      perPage: 3,
+      currentPage: 1,
+      rows: 1
     },
 
     // Search
@@ -217,10 +243,16 @@ export default {
     // Loader State
     loading: true,
     loadingAuthorBooks: false,
+    loadingAuthors: false,
 
     // Tab state
     authorsActive: false,
-    booksActive: false
+    booksActive: false,
+
+    // Form Errors
+    formErrors: {
+      author: {}
+    }
   }),
 
   async mounted() {
@@ -240,6 +272,10 @@ export default {
     searchPlaceholder() {
       if (this.authorsActive) return 'Search Author';
       return 'Search Book';
+    },
+
+    allAuthorBooks() {
+      return [...this.addedAuthorBooks, ...this.authorBooks];
     }
   },
 
@@ -252,23 +288,54 @@ export default {
         this.allBooks = this.books.filter((value) => value.title.toLowerCase().includes(val.toLowerCase()));
       }
     },
+
     authorsActive() {
       this.search = '';
     },
+
     authors: {
       deep: true,
       handler(value, prev) {
         if (value !== prev && value.length) {
           this.allAuthors = [...value];
-
         }
       }
     },
+
     books: {
       deep: true,
       handler(value, prev) {
         if (value !== prev && value.length) {
-          this.allBooks = [...value]
+          this.allBooks = [...value];
+        }
+      }
+    },
+
+    allAuthors: {
+      deep: true,
+      handler(value) {
+        this.authorTable.rows = value.length;
+      }
+    },
+
+    allAuthorBooks: {
+      deep: true,
+      handler(values) {
+        this.authorBooksTable.rows = values.length;
+        this.formErrors.author.books = false
+      }
+    },
+
+    allBooks: {
+      deep: true,
+      handler(values) {
+        this.booksTable.rows = values.length;
+      }
+    },
+    'author.name': {
+      handler(value) {
+        if (value) {
+          this.formErrors.author = { name: false }
         }
       }
     }
@@ -279,6 +346,7 @@ export default {
 
     ...mapMutations(['SET_USER', 'SET_SELECTED_AUTHOR']),
 
+    // Toggle methods
     async toggleTab(value) {
       if (value === 'books') {
         this.authorsActive = false;
@@ -287,10 +355,12 @@ export default {
         await this.getBooks();
       }
       if (value === 'authors') {
+        this.loadingAuthors = true;
         this.booksActive = false;
         this.authorsActive = true;
         await this.$router.push({ query: { tab: 'authors' } });
         await this.getAuthors();
+        this.loadingAuthors = false;
       }
     },
 
@@ -308,30 +378,66 @@ export default {
       this.resetBook();
     },
 
+    checkAuthorForm() {
+      const valid = this.$refs.form.checkValidity()
+      const hasBooks = this.addedAuthorBooks.filter((item) => item.title).length
+      if (!valid) {
+        this.formErrors.author = {
+          name: true
+        }
+        return false
+      }
+      if (!hasBooks) {
+        this.formErrors.author = {
+          books: true
+        }
+        return false
+      }
+      return true
+    },
+
+    handleSubmit(e) {
+      e.preventDefault()
+      return this.checkAuthorForm()
+    },
+
+    handleOk(e) {
+      const valid = this.handleSubmit(e)
+      if (valid) {
+        this.saveAuthor()
+      }
+    },
+
     async saveAuthor() {
+      this.loadingAuthors = true;
+
       try {
         const [first_name, last_name] = this.author.name.split(' ');
-        const { author } = await this.addAuthor({
-          first_name: first_name,
-          last_name: last_name
-        });
 
-        const books = this.addedAuthorBooks
-          .filter((item) => item.title)
-          .reduce((acc, value) => {
-            if (!acc) acc = [];
-            acc.push({
-              title: value.title,
-              isbn: value.isbn,
-              cost: value.cost || 0,
-              publish_year: value.year || 0,
-              pages: value.pages || 0
-            });
-            return acc;
-          }, []);
+        if (this.authorModal.id === 'add-author') {
+          const books = this.addedAuthorBooks
+            .filter((item) => item.title)
+            .reduce((acc, value) => {
+              if (!acc) acc = [];
+              acc.push({
+                title: value.title,
+                isbn: value.isbn,
+                cost: value.cost || 0,
+                publish_year: value.year || 0,
+                pages: value.pages || 0
+              });
+              return acc;
+            }, []);
 
-        if (books.length) {
-          await this.addBooks({ author, books });
+          const { author } = await this.addAuthor({
+            first_name: first_name,
+            last_name: last_name,
+            count: books.length
+          });
+
+          if (books.length) {
+            await this.addBooks({ author, books });
+          }
         }
       } catch (e) {
         console.log(e);
@@ -350,17 +456,12 @@ export default {
       };
     },
 
-    resetItems() {
-      this.items = [{}];
-    },
-
     resetAuthor() {
       this.author.name = '';
     },
 
     cancel() {
       this.authorModal = {};
-      this.resetItems();
       this.resetBook();
       this.resetAuthor();
       this.addedAuthorBooks = [];
@@ -483,5 +584,9 @@ export default {
 .page {
   background-image: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%);
   height: 100vh;
+}
+.error-message {
+  font-size: 0.875em;
+  margin-bottom: 0.25rem;
 }
 </style>

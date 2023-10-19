@@ -115,7 +115,7 @@ export default () =>
       },
 
       SET_BOOKS(state, data) {
-        state.books = data
+        state.books = data;
       }
     },
 
@@ -213,6 +213,8 @@ export default () =>
 
       async addAuthor({ commit, state }, author) {
         try {
+          const count = author.count
+          delete author.count
           const { data } = await this.$axios.post(
             '/authors',
             { ...author },
@@ -222,13 +224,14 @@ export default () =>
               }
             }
           );
+          commit('SET_AUTHORS', [{ ...data.author, author_id: data.author.id, count }, ...state.authors]);
           return data;
         } catch (e) {
           console.log({ e });
         }
       },
 
-      async addBooks({ commit, state }, { author, books }) {
+      async addBooks({ commit, state, dispatch }, { author, books }) {
         try {
           const { data } = await this.$axios.post(
             `/authors/${author.id}/books`,
@@ -241,6 +244,7 @@ export default () =>
           );
           return data;
         } catch (e) {
+
           console.log({ e });
         }
       },
