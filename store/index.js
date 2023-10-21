@@ -115,7 +115,10 @@ export default () =>
       },
 
       SET_BOOKS(state, data) {
-        state.books = data;
+        state.books = data.map(book => ({
+          ...book,
+          updated: new Date(book.updated)
+        })).sort((a, b) => b.updated - a.updated);
       }
     },
 
@@ -188,7 +191,12 @@ export default () =>
           });
           commit(
             'SET_AUTHORS',
-            authors.map((author, index) => ({ ...author, id: index + 1, author_id: author.id }))
+            authors.map((author, index) => ({
+              ...author,
+              id: index + 1,
+              author_id: author.id,
+              updated: new Date(author.updated)
+            })).sort((a, b) => b.updated - a.updated)
           );
           commit('SET_SUCCESS', {
             config: 'authors',
@@ -213,8 +221,8 @@ export default () =>
 
       async addAuthor({ commit, state }, author) {
         try {
-          const count = author.count
-          delete author.count
+          const count = author.count;
+          delete author.count;
           const { data } = await this.$axios.post(
             '/authors',
             { ...author },
@@ -242,9 +250,9 @@ export default () =>
               }
             }
           );
+          commit('SET_BOOKS', [...data.books, ...state.books])
           return data;
         } catch (e) {
-
           console.log({ e });
         }
       },
@@ -259,7 +267,7 @@ export default () =>
               Authorization: `Bearer ${state.auth.token}`
             }
           });
-          commit('SET_BOOKS', books);
+          commit('SET_BOOKS', books)
           commit('SET_SUCCESS', {
             books: {
               detail,
@@ -283,7 +291,13 @@ export default () =>
               Authorization: `Bearer ${state.auth.token}`
             }
           });
-          commit('SET_BOOKS_BY_AUTHOR', { ...author, books });
+          commit('SET_BOOKS_BY_AUTHOR', {
+            ...author,
+            books: books.map(book => ({
+              ...book,
+              updated: new Date(book.updated)
+            })).sort((a, b) => b.updated - a.updated)
+          });
           commit('SET_SUCCESS', {
             author: {
               detail,
@@ -294,6 +308,24 @@ export default () =>
         } catch (e) {
           console.log({ e });
         }
+      },
+
+      async updateAuthor({ commit, state }, author) {
+        console.log('UPDATE AUTHOR');
+        return {};
+      },
+
+      async updateBooks({ commit, state }, { books, author }) {
+        console.log('UPDATE BOOKS');
+        return {};
+      },
+
+      async deleteBook({ commit, state }, book) {
+        console.log('DELETE BOOKS');
+      },
+
+      async deleteAuthor({ commit, state }, author) {
+        console.log('DELETE author');
       }
     },
 
