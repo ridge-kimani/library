@@ -101,51 +101,51 @@
             Delete
           </b-button>
         </template>
-        <div>
-          <b-form ref="author-modal">
-            <b-form-group id="name-group" label="Name:" label-for="name">
-              <b-form-input id="name" placeholder="Enter name" required v-model="author.name"></b-form-input>
-              <b-form-invalid-feedback v-if="formErrors.author.name" force-show>
-                Enter the author name
-              </b-form-invalid-feedback>
-            </b-form-group>
+          <div>
+            <b-form ref="author-modal">
+              <b-form-group id="name-group" label="Name:" label-for="name">
+                <b-form-input id="name" placeholder="Enter name" required v-model="author.name"></b-form-input>
+                <b-form-invalid-feedback v-if="formErrors.author.name" force-show>
+                  Enter the author name
+                </b-form-invalid-feedback>
+              </b-form-group>
 
-            <div>
-              <div class="my-4 d-flex" v-if="authorModal.id === 'add-author'">
-                <b-button variant="outline-success" @click="toggleAddBook">Add Book</b-button>
-              </div>
-              <div v-if="formErrors.author.books" class="text-danger error-message">Add at least one book</div>
-            </div>
-
-            <b-table
-              id="author-books-table"
-              striped
-              hover
-              :items="allAuthorBooks"
-              :fields="bookFields"
-              :isBusy="loadingAuthorBooks"
-              :total-rows="authorBooksRows"
-              :per-page="authorBooksTablePerPage"
-              :current-page="authorBooksCurrentPage"
-              selectable
-              @row-clicked="bookRowClicked"
-              v-b-modal.edit-book
-            >
-              <template #table-busy>
-                <div class="text-center text-danger my-2">
-                  <b-spinner class="align-middle"></b-spinner>
-                  <strong>Loading...</strong>
+              <div>
+                <div class="my-4 d-flex" v-if="authorModal.id === 'add-author'">
+                  <b-button variant="outline-success" @click="toggleAddBook">Add Book</b-button>
                 </div>
-              </template>
-            </b-table>
-            <b-pagination
-              class="justify-content-center mt-5"
-              v-model="authorBooksCurrentPage"
-              :total-rows="authorBooksRows"
-              :per-page="authorBooksTablePerPage"
-              aria-controls="author-books-table"
-            ></b-pagination>
-          </b-form>
+                <div v-if="formErrors.author.books" class="text-danger error-message">Add at least one book</div>
+              </div>
+
+              <b-table
+                id="author-books-table"
+                striped
+                hover
+                :items="allAuthorBooks"
+                :fields="bookFields"
+                :isBusy="loadingAuthorBooks"
+                :total-rows="authorBooksRows"
+                :per-page="authorBooksTablePerPage"
+                :current-page="authorBooksCurrentPage"
+                selectable
+                @row-clicked="bookRowClicked"
+                v-b-modal.edit-book
+              >
+                <template #table-busy>
+                  <div class="text-center text-danger my-2">
+                    <b-spinner class="align-middle"></b-spinner>
+                    <strong>Loading...</strong>
+                  </div>
+                </template>
+              </b-table>
+              <b-pagination
+                class="justify-content-center mt-5"
+                v-model="authorBooksCurrentPage"
+                :total-rows="authorBooksRows"
+                :per-page="authorBooksTablePerPage"
+                aria-controls="author-books-table"
+              ></b-pagination>
+            </b-form>
         </div>
       </b-modal>
       <!-- -->
@@ -162,7 +162,7 @@
         <template #modal-header="{ close }">
           <h5>{{ bookModal.title }}</h5>
 
-          <b-button v-if="bookModal.id === 'edit-book'" size="sm" variant="danger" @click="onDeleteBook">
+          <b-button v-if="bookModal.id === 'edit-book' && booksActive" size="sm" variant="danger" @click="onDeleteBook">
             Delete
           </b-button>
         </template>
@@ -750,13 +750,27 @@ export default {
       const { id } = this.deleteConfirmation;
       try {
         if (id === 'delete-author') {
-          await this.deleteAuthor();
+          await this.deleteAuthor({
+            author: {
+              ...this.author,
+              id: this.author.author_id
+            }
+          });
         }
 
         if (id === 'delete-book') {
-          await this.deleteBook();
+          await this.deleteBook({
+            author: {
+              id: this.options.filter(option => option.label === this.book.author)[0].id
+            },
+            book: {
+              ...this.book,
+            }
+          });
         }
         this.deleteConfirmationClose();
+        this.authorModal = {}
+        this.bookModal = {}
       } catch (e) {}
     },
 
