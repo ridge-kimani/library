@@ -187,7 +187,7 @@
               <b-form-input id="pages" placeholder="Pages" v-model="book.pages"></b-form-input>
             </b-form-group>
             <b-form-group id="group-year" label="Publish Year:" label-for="year">
-              <b-form-input id="year" placeholder="Enter publish year" v-model="book.year"></b-form-input>
+              <b-form-input id="year" placeholder="Enter publish year" v-model="book.publish_year"></b-form-input>
             </b-form-group>
             <b-form-group id="cost-group" label="Cost:" label-for="cost">
               <b-form-input id="cost" placeholder="Cost" v-model="book.cost"></b-form-input>
@@ -245,7 +245,7 @@ export default {
     search: '',
 
     // Table
-    bookFields: ['title', 'author', 'isbn', 'pages', 'cost'],
+    bookFields: ['title', 'author', 'isbn', 'publish_year', 'pages', 'cost'],
     authorsFields: ['name', 'author_id', 'count'],
 
     // BooksTable
@@ -599,7 +599,7 @@ export default {
             title: value.title,
             isbn: value.isbn,
             cost: value.cost || 0,
-            publish_year: value.year || 0,
+            publish_year: value.publish_year || 0,
             pages: value.pages || 0,
             id: value.id,
             update: value.update
@@ -636,9 +636,9 @@ export default {
             id: this.author.author_id,
             count: books.length
           });
-
+          console.log({ author })
           if (books.length) {
-            await this.updateBooks({ books });
+            await this.updateBooks({ books: books.map((book) => ({ ...book, author_id: author.id })) });
           }
         }
       } catch (e) {
