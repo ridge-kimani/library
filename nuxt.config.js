@@ -61,7 +61,7 @@ export default {
     baseURL: process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:5000' : process.env.BASEURL,
 
     onRequest(config) {
-      console.log({ config })
+      console.log({ config });
     }
   },
 

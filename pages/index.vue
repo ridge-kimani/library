@@ -42,10 +42,10 @@
               show-empty
             >
               <template #empty="scope">
-                <h6 class='text-secondary text-center'>There are no authors found</h6>
+                <h6 class="text-secondary text-center">There are no authors found</h6>
               </template>
               <template #emptyfiltered="scope">
-                <h6 class='text-secondary text-center'>Author not found</h6>
+                <h6 class="text-secondary text-center">Author not found</h6>
               </template>
               <template #table-busy>
                 <div class="text-center text-danger my-2">
@@ -83,10 +83,10 @@
               show-empty
             >
               <template #empty="scope">
-                <h6 class='text-secondary text-center'>There are no books found</h6>
+                <h6 class="text-secondary text-center">There are no books found</h6>
               </template>
               <template #emptyfiltered="scope">
-                <h6 class='text-secondary text-center'>Book not found</h6>
+                <h6 class="text-secondary text-center">Book not found</h6>
               </template>
             </b-table>
             <b-pagination
@@ -148,10 +148,10 @@
               show-empty
             >
               <template #empty="scope">
-                <h6 class='text-secondary text-center'>There are no books</h6>
+                <h6 class="text-secondary text-center">There are no books</h6>
               </template>
               <template #emptyfiltered="scope">
-                <h6 class='text-secondary text-center'>Book not found</h6>
+                <h6 class="text-secondary text-center">Book not found</h6>
               </template>
               <template #table-busy>
                 <div class="text-center text-danger my-2">
