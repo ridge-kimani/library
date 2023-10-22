@@ -472,12 +472,12 @@ export default {
     },
 
     toggleEditBook() {
-      return this.bookModal = {
+      return (this.bookModal = {
         selected: 'edit-book',
         id: 'edit-book',
         title: 'Edit Book',
         show: true
-      };
+      });
     },
 
     checkAuthorForm() {
@@ -523,7 +523,7 @@ export default {
     handleBookOk(e) {
       e.preventDefault();
       const { selected } = this.bookModal;
-      const { selected: selectedAuthor } = this.authorModal
+      const { selected: selectedAuthor } = this.authorModal;
       if (!this.checkBookForm()) return false;
 
       this.resetFormErrors();
@@ -548,7 +548,7 @@ export default {
 
         const updated = authorBooks.map((item) => {
           if (item.id === this.book.id) {
-            return { ...this.book, updated: true };
+            return { ...this.book, update: true };
           }
           return item;
         });
@@ -582,11 +582,14 @@ export default {
         .reduce((acc, value) => {
           if (!acc) acc = [];
           acc.push({
+            ...value,
             title: value.title,
             isbn: value.isbn,
             cost: value.cost || 0,
             publish_year: value.year || 0,
-            pages: value.pages || 0
+            pages: value.pages || 0,
+            id: value.id,
+            update: value.update
           });
           return acc;
         }, []);
@@ -613,7 +616,7 @@ export default {
         }
 
         if (id === 'edit-author') {
-          const books = this.serializeBooks(this.authorBooks);
+          const books = this.serializeBooks(this.authorBooks).filter((book) => book.update);
           const { author } = await this.updateAuthor({
             first_name,
             last_name,

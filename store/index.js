@@ -105,10 +105,12 @@ export default () =>
       },
 
       SET_AUTHORS(state, data) {
-        state.authors = data.map((author) => ({
-          ...author,
-          updated: new Date(author.updated)
-        })).sort((a, b) => b.updated - a.updated);
+        state.authors = data
+          .map((author) => ({
+            ...author,
+            updated: new Date(author.updated)
+          }))
+          .sort((a, b) => b.updated - a.updated);
       },
 
       SET_BOOKS_BY_AUTHOR(state, data) {
@@ -194,12 +196,15 @@ export default () =>
               Authorization: `Bearer ${state.auth.token}`
             }
           });
-          commit('SET_AUTHORS', authors.map((author, index) => ({
-            ...author,
-            id: index + 1,
-            author_id: author.id,
-            updated: new Date(author.updated)
-          })));
+          commit(
+            'SET_AUTHORS',
+            authors.map((author, index) => ({
+              ...author,
+              id: index + 1,
+              author_id: author.id,
+              updated: new Date(author.updated)
+            }))
+          );
           commit('SET_SUCCESS', {
             config: 'authors',
             payload: {
@@ -308,7 +313,7 @@ export default () =>
               status
             }
           });
-          return books;
+          return state.author.books;
         } catch (e) {
           console.log({ e });
         }
@@ -316,19 +321,15 @@ export default () =>
 
       async updateAuthor({ commit, state }, author) {
         try {
-          const { data } = await this.$axios.put(
-            `/authors/${author.id}`,
-            author,
-            {
-              headers: {
-                Authorization: `Bearer ${state.auth.token}`
-              }
+          const { data } = await this.$axios.put(`/authors/${author.id}`, author, {
+            headers: {
+              Authorization: `Bearer ${state.auth.token}`
             }
-          );
-          const authors = [...state.authors]
-          const index = authors.findIndex(_author => _author.author_id === author.id)
-          authors[index] = {...data.author, author_id: author.id, count: author.count }
-          commit('SET_AUTHORS', authors)
+          });
+          const authors = [...state.authors];
+          const index = authors.findIndex((_author) => _author.author_id === author.id);
+          authors[index] = { ...data.author, author_id: author.id, count: author.count };
+          commit('SET_AUTHORS', authors);
           return data;
         } catch (e) {
           console.log({ e });
@@ -339,7 +340,7 @@ export default () =>
         try {
           const { data } = await this.$axios.put(
             `/users/books`,
-            { books: books.filter(book => book.updated) },
+            { books },
             {
               headers: {
                 Authorization: `Bearer ${state.auth.token}`
@@ -359,8 +360,8 @@ export default () =>
               Authorization: `Bearer ${state.auth.token}`
             }
           });
-          const books = state.books.filter(book_ => book_.id !== book.id)
-          commit('SET_BOOKS', books)
+          const books = state.books.filter((book_) => book_.id !== book.id);
+          commit('SET_BOOKS', books);
         } catch (e) {
           console.log({ e });
         }
@@ -373,7 +374,7 @@ export default () =>
               Authorization: `Bearer ${state.auth.token}`
             }
           });
-          const authors = state.authors.filter(author_ => author_.author_id !== author.id)
+          const authors = state.authors.filter((author_) => author_.author_id !== author.id);
           commit('SET_AUTHORS', authors);
         } catch (e) {
           console.log({ e });
