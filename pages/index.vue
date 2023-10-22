@@ -520,7 +520,7 @@ export default {
       return valid;
     },
 
-    handleBookOk(e) {
+    async handleBookOk(e) {
       e.preventDefault();
       const { selected } = this.bookModal;
       const { selected: selectedAuthor } = this.authorModal;
@@ -559,6 +559,19 @@ export default {
       if (this.booksActive) {
         if (selected === 'add-book') {
           return this.handleAddBooks();
+        }
+        if (selected === 'edit-book') {
+          let id;
+          if (typeof this.book.author === 'number') {
+            id = this.book.author;
+          } else {
+            id = this.options.filter((option) => option.label === this.book.author)[0].id;
+          }
+          await this.updateBooks({
+            books: [{ ...this.book, author_id: id }]
+          });
+          await this.getBooks();
+          return (this.bookModal = {});
         }
       }
     },
