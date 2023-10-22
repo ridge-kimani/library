@@ -184,13 +184,13 @@
               <b-form-input id="isbn" v-model="book.isbn" placeholder="ISBN"></b-form-input>
             </b-form-group>
             <b-form-group id="pages-group" label="Pages:" label-for="pages">
-              <b-form-input id="pages" placeholder="Pages" v-model="book.pages"></b-form-input>
+              <b-form-input id="pages" placeholder="Pages" type='number' v-model="book.pages"></b-form-input>
             </b-form-group>
             <b-form-group id="group-year" label="Publish Year:" label-for="year">
-              <b-form-input id="year" placeholder="Enter publish year" v-model="book.publish_year"></b-form-input>
+              <b-form-input id="year" placeholder="Enter publish year" type='number' v-model="book.publish_year"></b-form-input>
             </b-form-group>
             <b-form-group id="cost-group" label="Cost:" label-for="cost">
-              <b-form-input id="cost" placeholder="Cost" v-model="book.cost"></b-form-input>
+              <b-form-input id="cost" placeholder="Cost" type='number' v-model="book.cost"></b-form-input>
             </b-form-group>
           </b-form>
         </div>
@@ -311,7 +311,9 @@ export default {
       title: '',
       action: null,
       show: false
-    }
+    },
+
+    saveThenRedirect: false
   }),
 
   async mounted() {
@@ -355,22 +357,20 @@ export default {
     authors: {
       deep: true,
       handler(value, prev) {
-        if (value !== prev && value.length) {
-          this.allAuthors = [...value];
-          this.options = value.map((val) => ({
+        this.allAuthors = [...value];
+        this.options =
+          value.length &&
+          value.map((val) => ({
             id: val.author_id,
             label: val.name
           }));
-        }
       }
     },
 
     books: {
       deep: true,
       handler(value, prev) {
-        if (value !== prev && value.length) {
-          this.allBooks = [...value];
-        }
+        this.allBooks = [...value];
       }
     },
 
@@ -625,6 +625,11 @@ export default {
           if (books.length) {
             await this.addBooks({ author, books });
           }
+          if (this.saveThenRedirect) {
+            this.saveThenRedirect = false;
+            this.authorModal = {}
+            return await this.toggleTab('books');
+          }
           return (this.authorModal = {});
         }
 
@@ -636,7 +641,6 @@ export default {
             id: this.author.author_id,
             count: books.length
           });
-          console.log({ author })
           if (books.length) {
             await this.updateBooks({ books: books.map((book) => ({ ...book, author_id: author.id })) });
           }
@@ -734,6 +738,11 @@ export default {
     },
 
     toggleAddBook() {
+      if (!this.options.length && this.booksActive) {
+        this.toggleTab('authors');
+        this.saveThenRedirect = true;
+        return this.toggleAddAuthor();
+      }
       this.book = {};
       this.setBookModal({
         selected: 'add-book',
