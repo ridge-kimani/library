@@ -287,7 +287,11 @@ export default {
       { key: 'isbn', sortable: true },
       { key: 'pages', sortable: true }
     ],
-    authorsFields: [{ key: 'name', sortable: true }, { key: 'author_id', sortable: true }, { key: 'count', sortable: true }],
+    authorsFields: [
+      { key: 'name', sortable: true },
+      { key: 'author_id', sortable: true },
+      { key: 'count', sortable: true }
+    ],
 
     // Sort
     sortBy: null,
@@ -562,7 +566,7 @@ export default {
           author: !this.book.author
         };
       }
-      return valid;
+      return valid || (this.book.title && author);
     },
 
     async handleBookOk(e) {
@@ -606,6 +610,7 @@ export default {
           return this.handleAddBooks();
         }
         if (selected === 'edit-book') {
+          console.log('HERE');
           let id;
           if (typeof this.book.author === 'number') {
             id = this.book.author;
