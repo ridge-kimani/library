@@ -30,16 +30,18 @@
               id="author-table"
               striped
               hover
+              selectable
+              @row-clicked="authorRowClicked"
+              v-b-modal.edit-author
+              show-empty
               select-mode="single"
               :isBusy="loadingAuthors"
               :items="allAuthors"
               :fields="authorsFields"
               :per-page="authorTablePerPage"
               :current-page="authorTableCurrentPage"
-              selectable
-              @row-clicked="authorRowClicked"
-              v-b-modal.edit-author
-              show-empty
+              :sort-by.sync="sortBy"
+              :sort-desc.sync="sortDesc"
             >
               <template #empty="scope">
                 <h6 class="text-secondary text-center">There are no authors found</h6>
@@ -137,7 +139,7 @@
               striped
               hover
               :items="allAuthorBooks"
-              :fields="bookFields"
+              :fields="modalBookFields"
               :isBusy="loadingAuthorBooks"
               :total-rows="authorBooksRows"
               :per-page="authorBooksTablePerPage"
@@ -272,8 +274,28 @@ export default {
     search: '',
 
     // Table
-    bookFields: ['title', 'author', 'isbn', 'publish_year', 'pages', 'cost'],
-    authorsFields: ['name', 'author_id', 'count'],
+    bookFields: [
+      { key: 'title', sortable: true },
+      { key: 'author', sortable: true },
+      { key: 'isbn', sortable: true },
+      { key: 'publish_year', sortable: true },
+      { key: 'pages', sortable: true },
+      { key: 'cost', sortable: true }
+    ],
+    modalBookFields: [
+      { key: 'title', sortable: true },
+      { key: 'isbn', sortable: true },
+      { key: 'pages', sortable: true }
+    ],
+    authorsFields: [
+      { key: 'name', sortable: true },
+      { key: 'author_id', sortable: true },
+      { key: 'count', sortable: true }
+    ],
+
+    // Sort
+    sortBy: null,
+    sortDesc: false,
 
     // BooksTable
     allBooks: [],
@@ -544,7 +566,7 @@ export default {
           author: !this.book.author
         };
       }
-      return valid;
+      return valid || (this.book.title && author);
     },
 
     async handleBookOk(e) {
@@ -588,6 +610,7 @@ export default {
           return this.handleAddBooks();
         }
         if (selected === 'edit-book') {
+          console.log('HERE');
           let id;
           if (typeof this.book.author === 'number') {
             id = this.book.author;
