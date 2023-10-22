@@ -105,7 +105,12 @@ export default () =>
       },
 
       SET_AUTHORS(state, data) {
-        state.authors = data;
+        state.authors = data
+          .map((author) => ({
+            ...author,
+            updated: new Date(author.updated)
+          }))
+          .sort((a, b) => b.updated - a.updated);
       },
 
       SET_BOOKS_BY_AUTHOR(state, data) {
@@ -115,7 +120,12 @@ export default () =>
       },
 
       SET_BOOKS(state, data) {
-        state.books = data;
+        state.books = data
+          .map((book) => ({
+            ...book,
+            updated: new Date(book.updated)
+          }))
+          .sort((a, b) => b.updated - a.updated);
       }
     },
 
@@ -188,7 +198,12 @@ export default () =>
           });
           commit(
             'SET_AUTHORS',
-            authors.map((author, index) => ({ ...author, id: index + 1, author_id: author.id }))
+            authors.map((author, index) => ({
+              ...author,
+              id: index + 1,
+              author_id: author.id,
+              updated: new Date(author.updated)
+            }))
           );
           commit('SET_SUCCESS', {
             config: 'authors',
@@ -213,8 +228,8 @@ export default () =>
 
       async addAuthor({ commit, state }, author) {
         try {
-          const count = author.count
-          delete author.count
+          const count = author.count;
+          delete author.count;
           const { data } = await this.$axios.post(
             '/authors',
             { ...author },
@@ -242,9 +257,9 @@ export default () =>
               }
             }
           );
+          commit('SET_BOOKS', [...data.books, ...state.books]);
           return data;
         } catch (e) {
-
           console.log({ e });
         }
       },
@@ -283,14 +298,84 @@ export default () =>
               Authorization: `Bearer ${state.auth.token}`
             }
           });
-          commit('SET_BOOKS_BY_AUTHOR', { ...author, books });
+          commit('SET_BOOKS_BY_AUTHOR', {
+            ...author,
+            books: books
+              .map((book) => ({
+                ...book,
+                updated: new Date(book.updated)
+              }))
+              .sort((a, b) => b.updated - a.updated)
+          });
           commit('SET_SUCCESS', {
             author: {
               detail,
               status
             }
           });
-          return books;
+          return state.author.books;
+        } catch (e) {
+          console.log({ e });
+        }
+      },
+
+      async updateAuthor({ commit, state }, author) {
+        try {
+          const { data } = await this.$axios.put(`/authors/${author.id}`, author, {
+            headers: {
+              Authorization: `Bearer ${state.auth.token}`
+            }
+          });
+          const authors = [...state.authors];
+          const index = authors.findIndex((_author) => _author.author_id === author.id);
+          authors[index] = { ...data.author, author_id: author.id, count: author.count };
+          commit('SET_AUTHORS', authors);
+          return data;
+        } catch (e) {
+          console.log({ e });
+        }
+      },
+
+      async updateBooks({ commit, state }, { books }) {
+        try {
+          const { data } = await this.$axios.put(
+            `/users/books`,
+            { books },
+            {
+              headers: {
+                Authorization: `Bearer ${state.auth.token}`
+              }
+            }
+          );
+          return data;
+        } catch (e) {
+          console.log({ e });
+        }
+      },
+
+      async deleteBook({ commit, state }, { author, book }) {
+        try {
+          await this.$axios.delete(`/authors/${author.id}/books/${book.id}`, {
+            headers: {
+              Authorization: `Bearer ${state.auth.token}`
+            }
+          });
+          const books = state.books.filter((book_) => book_.id !== book.id);
+          commit('SET_BOOKS', books);
+        } catch (e) {
+          console.log({ e });
+        }
+      },
+
+      async deleteAuthor({ commit, state }, { author }) {
+        try {
+          await this.$axios.delete(`/authors/${author.id}/`, {
+            headers: {
+              Authorization: `Bearer ${state.auth.token}`
+            }
+          });
+          const authors = state.authors.filter((author_) => author_.author_id !== author.id);
+          commit('SET_AUTHORS', authors);
         } catch (e) {
           console.log({ e });
         }

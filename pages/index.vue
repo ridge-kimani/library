@@ -1,23 +1,23 @@
 <template>
   <div class="page">
     <div v-if="!loading">
-      <div class="mx-10 pt-5 d-flex justify-content-between">
+      <div class="mx-10 my-4 d-flex justify-content-between">
         <div v-if="authorsActive">
-          <b-button variant="success" @click="toggleAddAuthor">Add Author</b-button>
+          <b-button variant="outline-success" @click="toggleAddAuthor">Add Author</b-button>
         </div>
         <div v-if="booksActive">
-          <b-button variant="success" @click="toggleAddBook">Add Book</b-button>
+          <b-button variant="outline-success" @click="toggleAddBook">Add Book</b-button>
+        </div>
+        <div>
+          <div>
+            <b-form-input :id="`search`" type="search" :placeholder="searchPlaceholder" v-model="search"></b-form-input>
+          </div>
         </div>
         <div>
           <b-button @click="logout" variant="outline-danger">Logout</b-button>
         </div>
       </div>
 
-      <div class="d-flex flex-column align-items-center">
-        <div class="my-5">
-          <b-form-input :id="`search`" type="search" :placeholder="searchPlaceholder" v-model="search"></b-form-input>
-        </div>
-      </div>
       <div class="mx-10">
         <b-nav tabs align="center">
           <b-nav-item :active="authorsActive" @click="toggleTab('authors')">Authors</b-nav-item>
@@ -39,7 +39,14 @@
               selectable
               @row-clicked="authorRowClicked"
               v-b-modal.edit-author
+              show-empty
             >
+              <template #empty="scope">
+                <h6 class='text-secondary text-center'>There are no authors found</h6>
+              </template>
+              <template #emptyfiltered="scope">
+                <h6 class='text-secondary text-center'>Author not found</h6>
+              </template>
               <template #table-busy>
                 <div class="text-center text-danger my-2">
                   <b-spinner class="align-middle"></b-spinner>
@@ -72,8 +79,16 @@
               :current-page="booksTableCurrentPage"
               selectable
               @row-clicked="bookRowClicked"
-              v-b-modal.edit-author
-            ></b-table>
+              v-b-modal.edit-book
+              show-empty
+            >
+              <template #empty="scope">
+                <h6 class='text-secondary text-center'>There are no books found</h6>
+              </template>
+              <template #emptyfiltered="scope">
+                <h6 class='text-secondary text-center'>Book not found</h6>
+              </template>
+            </b-table>
             <b-pagination
               class="justify-content-center mt-5"
               v-model="booksTableCurrentPage"
@@ -95,8 +110,14 @@
         @close="cancel"
         @ok="handleAuthorOk"
       >
+        <template #modal-header="{ close }">
+          <h5>{{ authorModal.title }}</h5>
+          <b-button v-if="authorModal.id === 'edit-author'" size="sm" variant="danger" @click="onDeleteAuthor">
+            Delete
+          </b-button>
+        </template>
         <div>
-          <b-form @submit.stop.prevent="handleAuthorSubmit" ref="form">
+          <b-form ref="author-modal">
             <b-form-group id="name-group" label="Name:" label-for="name">
               <b-form-input id="name" placeholder="Enter name" required v-model="author.name"></b-form-input>
               <b-form-invalid-feedback v-if="formErrors.author.name" force-show>
@@ -104,10 +125,13 @@
               </b-form-invalid-feedback>
             </b-form-group>
 
-            <div class="my-4 d-flex">
-              <b-button variant="outline-success" @click="toggleAddBook">Add Book</b-button>
+            <div>
+              <div class="my-4 d-flex" v-if="authorModal.id === 'add-author'">
+                <b-button variant="outline-success" @click="toggleAddBook">Add Book</b-button>
+              </div>
+              <div v-if="formErrors.author.books" class="text-danger error-message">Add at least one book</div>
             </div>
-            <div v-if="formErrors.author.books" class="text-danger error-message">Add at least one book</div>
+
             <b-table
               id="author-books-table"
               striped
@@ -121,7 +145,14 @@
               selectable
               @row-clicked="bookRowClicked"
               v-b-modal.edit-book
+              show-empty
             >
+              <template #empty="scope">
+                <h6 class='text-secondary text-center'>There are no books</h6>
+              </template>
+              <template #emptyfiltered="scope">
+                <h6 class='text-secondary text-center'>Book not found</h6>
+              </template>
               <template #table-busy>
                 <div class="text-center text-danger my-2">
                   <b-spinner class="align-middle"></b-spinner>
@@ -146,36 +177,71 @@
         v-model="bookModal.show"
         :id="bookModal.id"
         :title="bookModal.title"
-        @cancel="resetBook"
-        @ok="handleSaveBook"
+        @cancel="cancel"
+        @close="cancel"
+        @ok="handleBookOk"
       >
+        <template #modal-header="{ close }">
+          <h5>{{ bookModal.title }}</h5>
+
+          <b-button v-if="bookModal.id === 'edit-book' && booksActive" size="sm" variant="danger" @click="onDeleteBook">
+            Delete
+          </b-button>
+        </template>
         <div>
-          <b-form @submit.stop.prevent="submitBookModal" ref="book-modal">
+          <b-form ref="book-modal">
             <b-form-group id="title-group" label="Title:" label-for="title">
               <b-form-input id="title" placeholder="Enter book title" required v-model="book.title"></b-form-input>
               <b-form-invalid-feedback v-if="formErrors.books.title" force-show>
-                Enter the author name
+                Enter the book title
               </b-form-invalid-feedback>
             </b-form-group>
             <b-form-group id="author-select" label="Author:" label-for="author" v-if="booksActive">
               <treeselect v-model="book.author" :multiple="false" :options="options" />
+              <b-form-invalid-feedback v-if="formErrors.books.author" force-show>
+                Enter the author name
+              </b-form-invalid-feedback>
             </b-form-group>
             <b-form-group id="isbn-group" label="Isbn:" label-for="isbn">
               <b-form-input id="isbn" v-model="book.isbn" placeholder="ISBN"></b-form-input>
             </b-form-group>
             <b-form-group id="pages-group" label="Pages:" label-for="pages">
-              <b-form-input id="pages" placeholder="Pages" v-model="book.pages"></b-form-input>
+              <b-form-input id="pages" placeholder="Pages" type="number" v-model="book.pages"></b-form-input>
             </b-form-group>
             <b-form-group id="group-year" label="Publish Year:" label-for="year">
-              <b-form-input id="year" placeholder="Enter publish year" v-model="book.year"></b-form-input>
+              <b-form-input
+                id="year"
+                placeholder="Enter publish year"
+                type="number"
+                v-model="book.publish_year"
+              ></b-form-input>
             </b-form-group>
             <b-form-group id="cost-group" label="Cost:" label-for="cost">
-              <b-form-input id="cost" placeholder="Cost" v-model="book.cost"></b-form-input>
+              <b-form-input id="cost" placeholder="Cost" type="number" v-model="book.cost"></b-form-input>
             </b-form-group>
           </b-form>
         </div>
       </b-modal>
       <!-- -->
+
+      <!-- Delete Confirmation -->
+      <b-modal
+        id="delete-confirmation"
+        v-model="deleteConfirmation.show"
+        :id="deleteConfirmation.id"
+        :title="deleteConfirmation.title"
+        @cancel="deleteConfirmationClose"
+        @close="deleteConfirmationClose"
+        @ok="handleDelete"
+      >
+        <template #modal-footer="{ ok, cancel, hide }">
+          <b-button size="sm" variant="secondary" @click="deleteConfirmationClose"> Cancel </b-button>
+          <b-button size="sm" variant="danger" @click="handleDelete"> Delete </b-button>
+        </template>
+        <div>
+          {{ deleteConfirmation.message }}
+        </div>
+      </b-modal>
     </div>
   </div>
 </template>
@@ -194,7 +260,7 @@ export default {
     authorTableCurrentPage: 1,
     authorTableRows: 1,
 
-    authorBooksTablePerPage: 5,
+    authorBooksTablePerPage: 3,
     authorBooksCurrentPage: 1,
     authorBooksRows: 1,
 
@@ -206,7 +272,7 @@ export default {
     search: '',
 
     // Table
-    bookFields: ['title', 'author', 'isbn', 'pages', 'cost'],
+    bookFields: ['title', 'author', 'isbn', 'publish_year', 'pages', 'cost'],
     authorsFields: ['name', 'author_id', 'count'],
 
     // BooksTable
@@ -264,7 +330,17 @@ export default {
     },
 
     // Tree select
-    options: []
+    options: [],
+
+    deleteConfirmation: {
+      selected: '',
+      id: '',
+      title: '',
+      action: null,
+      show: false
+    },
+
+    saveThenRedirect: false
   }),
 
   async mounted() {
@@ -308,22 +384,20 @@ export default {
     authors: {
       deep: true,
       handler(value, prev) {
-        if (value !== prev && value.length) {
-          this.allAuthors = [...value];
-          this.options = value.map((val) => ({
+        this.allAuthors = [...value];
+        this.options =
+          value.length &&
+          value.map((val) => ({
             id: val.author_id,
             label: val.name
           }));
-        }
       }
     },
 
     books: {
       deep: true,
       handler(value, prev) {
-        if (value !== prev && value.length) {
-          this.allBooks = [...value];
-        }
+        this.allBooks = [...value];
       }
     },
 
@@ -352,14 +426,56 @@ export default {
     'author.name': {
       handler(value) {
         if (value) {
-          this.formErrors.author = { name: false };
+          this.formErrors.author.name = false;
+        }
+      }
+    },
+
+    'book.title': {
+      handler(value) {
+        if (value) {
+          this.formErrors.books.title = false;
+        }
+      }
+    },
+
+    'book.author': {
+      handler(value) {
+        if (value) {
+          this.formErrors.books.author = false;
+        }
+      }
+    },
+    'bookModal.show': {
+      handler(value) {
+        if (!value) {
+          this.formErrors.books = {};
+        }
+      }
+    },
+
+    'authorModal.show': {
+      handler(value) {
+        if (!value) {
+          this.formErrors.author = {};
         }
       }
     }
   },
 
   methods: {
-    ...mapActions(['addBooks', 'addAuthor', 'getAuthStatus', 'getAuthors', 'getBooksByAuthor', 'getBooks']),
+    ...mapActions([
+      'addBooks',
+      'addAuthor',
+      'getAuthStatus',
+      'getAuthors',
+      'getBooksByAuthor',
+      'getBooks',
+      'updateAuthor',
+      'updateBooks',
+      'deleteBook',
+      'deleteAuthor'
+    ]),
 
     ...mapMutations(['SET_USER', 'SET_SELECTED_AUTHOR']),
 
@@ -383,90 +499,140 @@ export default {
     },
 
     toggleEditBook() {
-      this.bookModal = {
+      return (this.bookModal = {
         selected: 'edit-book',
         id: 'edit-book',
         title: 'Edit Book',
         show: true
-      };
+      });
     },
 
     checkAuthorForm() {
-      const valid = this.$refs.form.checkValidity();
+      let valid = this.$refs['author-modal'].checkValidity();
+
       const { selected } = this.authorModal;
+      const books = selected === 'add-author' ? this.addedAuthorBooks : this.authorBooks;
+
       if (!valid) {
         this.formErrors.author = {
           name: true
         };
-        return false;
       }
 
-      if (this.authorsActive && selected === 'add-author') {
-        const hasBooks = this.addedAuthorBooks.filter((item) => item.title).length;
-        if (!hasBooks) {
-          this.formErrors.author = {
-            books: true
-          };
-          return false;
-        }
-        return true;
+      const hasBooks = books.filter((item) => item.title).length;
+
+      if (!hasBooks) {
+        this.formErrors.author = {
+          ...this.formErrors.author,
+          books: true
+        };
+        valid = false;
       }
-      console.log('EDIT AUTHOR');
+
+      return valid;
     },
 
     checkBookForm() {
-      const valid = this.$refs['book-modal'].checkValidity();
+      let { author } = this.book;
+      if (this.authorsActive) {
+        author = true;
+      }
+      const valid = this.$refs['book-modal'].checkValidity() && author;
       if (!valid) {
         this.formErrors.books = {
-          title: true
+          title: !this.book.title,
+          author: !this.book.author
         };
       }
       return valid;
     },
 
-    submitBookModal(e) {
+    async handleBookOk(e) {
       e.preventDefault();
-      const valid = this.checkBookForm();
-      if (valid) {
-        this.resetFormErrors();
-        this.bookModal = {};
-      }
-    },
-
-    handleSaveBook(e) {
       const { selected } = this.bookModal;
+      const { selected: selectedAuthor } = this.authorModal;
+      if (!this.checkBookForm()) return false;
+
+      this.resetFormErrors();
+
+      const addedAuthorBooks = this.addedAuthorBooks;
+      const authorBooks = this.authorBooks;
 
       if (this.authorsActive) {
         if (selected === 'add-book') {
-          return (this.addedAuthorBooks = [
-            ...this.addedAuthorBooks,
+          this.addedAuthorBooks = [
+            ...addedAuthorBooks,
             {
               ...this.book
             }
-          ]);
+          ];
+          return (this.bookModal = {});
         }
-        console.log('EDIT BOOK');
+
+        if (selected === 'edit-book' && selectedAuthor === 'add-author') {
+          this.addedAuthorBooks[this.book.index] = this.book;
+        }
+
+        const updated = authorBooks.map((item) => {
+          if (item.id === this.book.id) {
+            return { ...this.book, update: true };
+          }
+          return item;
+        });
+        this.authorBooks = [...updated];
+        return (this.bookModal = {});
       }
 
       if (this.booksActive) {
         if (selected === 'add-book') {
-          console.log('ADD BOOK');
-          return true;
+          return this.handleAddBooks();
         }
-        console.log('EDIT BOOK');
+        if (selected === 'edit-book') {
+          let id;
+          if (typeof this.book.author === 'number') {
+            id = this.book.author;
+          } else {
+            id = this.options.filter((option) => option.label === this.book.author)[0].id;
+          }
+          await this.updateBooks({
+            books: [{ ...this.book, author_id: id }]
+          });
+          await this.getBooks();
+          return (this.bookModal = {});
+        }
       }
     },
 
-    handleAuthorSubmit(e) {
-      e.preventDefault();
-      return this.checkAuthorForm();
+    async handleAddBooks() {
+      await this.addBooks({ author: { id: this.book.author }, books: [{ ...this.book }] });
+      this.bookModal = {};
     },
 
     handleAuthorOk(e) {
-      const valid = this.handleAuthorSubmit(e);
-      if (valid) {
-        this.saveAuthor();
-      }
+      e.preventDefault();
+      const valid = this.checkAuthorForm();
+      if (!valid) return false;
+
+      this.saveAuthor();
+    },
+
+    serializeBooks(state) {
+      return state
+        .filter((item) => item.title)
+        .reduce((acc, value) => {
+          if (!acc) acc = [];
+          acc.push({
+            ...value,
+            title: value.title,
+            isbn: value.isbn,
+            cost: value.cost || 0,
+            publish_year: value.publish_year || 0,
+            pages: value.pages || 0,
+            id: value.id,
+            update: value.update
+          });
+          return acc;
+        }, []);
     },
 
     async saveAuthor() {
@@ -474,22 +640,9 @@ export default {
 
       try {
         const [first_name, last_name] = this.author.name.split(' ');
-
-        if (this.authorModal.id === 'add-author') {
-          const books = this.addedAuthorBooks
-            .filter((item) => item.title)
-            .reduce((acc, value) => {
-              if (!acc) acc = [];
-              acc.push({
-                title: value.title,
-                isbn: value.isbn,
-                cost: value.cost || 0,
-                publish_year: value.year || 0,
-                pages: value.pages || 0
-              });
-              return acc;
-            }, []);
-
+        const { id } = this.authorModal;
+        if (id === 'add-author') {
+          const books = this.serializeBooks(this.addedAuthorBooks);
           const { author } = await this.addAuthor({
             first_name: first_name,
             last_name: last_name,
@@ -498,6 +651,25 @@ export default {
 
           if (books.length) {
             await this.addBooks({ author, books });
+          }
+          if (this.saveThenRedirect) {
+            this.saveThenRedirect = false;
+            this.authorModal = {};
+            return await this.toggleTab('books');
+          }
+          return (this.authorModal = {});
+        }
+
+        if (id === 'edit-author') {
+          const books = this.serializeBooks(this.authorBooks).filter((book) => book.update);
+          const { author } = await this.updateAuthor({
+            first_name,
+            last_name,
+            id: this.author.author_id,
+            count: books.length
+          });
+          if (books.length) {
+            await this.updateBooks({ books: books.map((book) => ({ ...book, author_id: author.id })) });
           }
         }
       } catch (e) {
@@ -529,7 +701,9 @@ export default {
     },
 
     cancel() {
+      this.resetFormErrors();
       this.authorModal = {};
+      this.bookModal = {};
       this.resetBook();
       this.resetAuthor();
       this.addedAuthorBooks = [];
@@ -591,6 +765,11 @@ export default {
     },
 
     toggleAddBook() {
+      if (!this.options.length && this.booksActive) {
+        this.toggleTab('authors');
+        this.saveThenRedirect = true;
+        return this.toggleAddAuthor();
+      }
       this.book = {};
       this.setBookModal({
         selected: 'add-book',
@@ -600,12 +779,68 @@ export default {
       });
     },
 
+    onDeleteBook() {
+      const message = `Are you sure you want to delete: ${this.book.title}?`;
+
+      this.deleteConfirmation = {
+        title: 'Delete Book',
+        id: 'delete-book',
+        selected: 'delete-book',
+        show: true,
+        message
+      };
+    },
+
+    onDeleteAuthor() {
+      const message = `Are you sure you want to delete: ${this.author.name}? This action will delete all related books.`;
+
+      this.deleteConfirmation = {
+        title: 'Delete Author',
+        id: 'delete-author',
+        selected: 'delete-author',
+        show: true,
+        message
+      };
+    },
+
+    deleteConfirmationClose() {
+      this.deleteConfirmation = {};
+    },
+
+    async handleDelete() {
+      const { id } = this.deleteConfirmation;
+      try {
+        if (id === 'delete-author') {
+          await this.deleteAuthor({
+            author: {
+              ...this.author,
+              id: this.author.author_id
+            }
+          });
+        }
+
+        if (id === 'delete-book') {
+          await this.deleteBook({
+            author: {
+              id: this.options.filter((option) => option.label === this.book.author)[0].id
+            },
+            book: {
+              ...this.book
+            }
+          });
+        }
+        this.deleteConfirmationClose();
+        this.authorModal = {};
+        this.bookModal = {};
+      } catch (e) {}
+    },
+
     bookRowClicked(value, index) {
       this.book = {
         ...value,
         index
       };
-      this.toggleEditBook();
+      return this.toggleEditBook();
     },
 
     async setAuthStatus() {
