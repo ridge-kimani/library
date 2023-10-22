@@ -101,51 +101,51 @@
             Delete
           </b-button>
         </template>
-          <div>
-            <b-form ref="author-modal">
-              <b-form-group id="name-group" label="Name:" label-for="name">
-                <b-form-input id="name" placeholder="Enter name" required v-model="author.name"></b-form-input>
-                <b-form-invalid-feedback v-if="formErrors.author.name" force-show>
-                  Enter the author name
-                </b-form-invalid-feedback>
-              </b-form-group>
+        <div>
+          <b-form ref="author-modal">
+            <b-form-group id="name-group" label="Name:" label-for="name">
+              <b-form-input id="name" placeholder="Enter name" required v-model="author.name"></b-form-input>
+              <b-form-invalid-feedback v-if="formErrors.author.name" force-show>
+                Enter the author name
+              </b-form-invalid-feedback>
+            </b-form-group>
 
-              <div>
-                <div class="my-4 d-flex" v-if="authorModal.id === 'add-author'">
-                  <b-button variant="outline-success" @click="toggleAddBook">Add Book</b-button>
-                </div>
-                <div v-if="formErrors.author.books" class="text-danger error-message">Add at least one book</div>
+            <div>
+              <div class="my-4 d-flex" v-if="authorModal.id === 'add-author'">
+                <b-button variant="outline-success" @click="toggleAddBook">Add Book</b-button>
               </div>
+              <div v-if="formErrors.author.books" class="text-danger error-message">Add at least one book</div>
+            </div>
 
-              <b-table
-                id="author-books-table"
-                striped
-                hover
-                :items="allAuthorBooks"
-                :fields="bookFields"
-                :isBusy="loadingAuthorBooks"
-                :total-rows="authorBooksRows"
-                :per-page="authorBooksTablePerPage"
-                :current-page="authorBooksCurrentPage"
-                selectable
-                @row-clicked="bookRowClicked"
-                v-b-modal.edit-book
-              >
-                <template #table-busy>
-                  <div class="text-center text-danger my-2">
-                    <b-spinner class="align-middle"></b-spinner>
-                    <strong>Loading...</strong>
-                  </div>
-                </template>
-              </b-table>
-              <b-pagination
-                class="justify-content-center mt-5"
-                v-model="authorBooksCurrentPage"
-                :total-rows="authorBooksRows"
-                :per-page="authorBooksTablePerPage"
-                aria-controls="author-books-table"
-              ></b-pagination>
-            </b-form>
+            <b-table
+              id="author-books-table"
+              striped
+              hover
+              :items="allAuthorBooks"
+              :fields="bookFields"
+              :isBusy="loadingAuthorBooks"
+              :total-rows="authorBooksRows"
+              :per-page="authorBooksTablePerPage"
+              :current-page="authorBooksCurrentPage"
+              selectable
+              @row-clicked="bookRowClicked"
+              v-b-modal.edit-book
+            >
+              <template #table-busy>
+                <div class="text-center text-danger my-2">
+                  <b-spinner class="align-middle"></b-spinner>
+                  <strong>Loading...</strong>
+                </div>
+              </template>
+            </b-table>
+            <b-pagination
+              class="justify-content-center mt-5"
+              v-model="authorBooksCurrentPage"
+              :total-rows="authorBooksRows"
+              :per-page="authorBooksTablePerPage"
+              aria-controls="author-books-table"
+            ></b-pagination>
+          </b-form>
         </div>
       </b-modal>
       <!-- -->
@@ -422,7 +422,7 @@ export default {
     'bookModal.show': {
       handler(value) {
         if (!value) {
-          this.formErrors.books = {}
+          this.formErrors.books = {};
         }
       }
     },
@@ -430,7 +430,7 @@ export default {
     'authorModal.show': {
       handler(value) {
         if (!value) {
-          this.formErrors.author = {}
+          this.formErrors.author = {};
         }
       }
     }
@@ -472,7 +472,7 @@ export default {
     },
 
     toggleEditBook() {
-      this.bookModal = {
+      return this.bookModal = {
         selected: 'edit-book',
         id: 'edit-book',
         title: 'Edit Book',
@@ -488,7 +488,7 @@ export default {
 
       if (!valid) {
         this.formErrors.author = {
-          name:true
+          name: true
         };
       }
 
@@ -498,7 +498,7 @@ export default {
         this.formErrors.author = {
           ...this.formErrors.author,
           books: true
-        }
+        };
         valid = false;
       }
 
@@ -523,24 +523,32 @@ export default {
     handleBookOk(e) {
       e.preventDefault();
       const { selected } = this.bookModal;
-
+      const { selected: selectedAuthor } = this.authorModal
       if (!this.checkBookForm()) return false;
 
       this.resetFormErrors();
 
+      const addedAuthorBooks = this.addedAuthorBooks;
+      const authorBooks = this.authorBooks;
+
       if (this.authorsActive) {
         if (selected === 'add-book') {
           this.addedAuthorBooks = [
-            ...this.addedAuthorBooks,
+            ...addedAuthorBooks,
             {
               ...this.book
             }
           ];
           return (this.bookModal = {});
         }
-        const updated = this.authorBooks.map((item) => {
+
+        if (selected === 'edit-book' && selectedAuthor === 'add-author') {
+          this.addedAuthorBooks[this.book.index] = this.book;
+        }
+
+        const updated = authorBooks.map((item) => {
           if (item.id === this.book.id) {
-            return this.book;
+            return { ...this.book, updated: true };
           }
           return item;
         });
@@ -552,7 +560,6 @@ export default {
         if (selected === 'add-book') {
           return this.handleAddBooks();
         }
-        console.log('EDIT BOOK');
       }
     },
 
@@ -562,7 +569,7 @@ export default {
     },
 
     handleAuthorOk(e) {
-      e.preventDefault()
+      e.preventDefault();
       const valid = this.checkAuthorForm();
       if (!valid) return false;
 
@@ -609,11 +616,13 @@ export default {
           const books = this.serializeBooks(this.authorBooks);
           const { author } = await this.updateAuthor({
             first_name,
-            last_name
+            last_name,
+            id: this.author.author_id,
+            count: books.length
           });
 
           if (books.length) {
-            await this.updateBooks({ books, author });
+            await this.updateBooks({ books });
           }
         }
       } catch (e) {
@@ -630,7 +639,7 @@ export default {
         cost: '',
         year: '',
         pages: ''
-      }
+      };
     },
 
     resetAuthor() {
@@ -645,9 +654,9 @@ export default {
     },
 
     cancel() {
-      this.resetFormErrors()
+      this.resetFormErrors();
       this.authorModal = {};
-      this.bookModal = {}
+      this.bookModal = {};
       this.resetBook();
       this.resetAuthor();
       this.addedAuthorBooks = [];
@@ -761,16 +770,16 @@ export default {
         if (id === 'delete-book') {
           await this.deleteBook({
             author: {
-              id: this.options.filter(option => option.label === this.book.author)[0].id
+              id: this.options.filter((option) => option.label === this.book.author)[0].id
             },
             book: {
-              ...this.book,
+              ...this.book
             }
           });
         }
         this.deleteConfirmationClose();
-        this.authorModal = {}
-        this.bookModal = {}
+        this.authorModal = {};
+        this.bookModal = {};
       } catch (e) {}
     },
 
@@ -779,7 +788,7 @@ export default {
         ...value,
         index
       };
-      this.toggleEditBook();
+      return this.toggleEditBook();
     },
 
     async setAuthStatus() {
