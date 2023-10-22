@@ -39,7 +39,14 @@
               selectable
               @row-clicked="authorRowClicked"
               v-b-modal.edit-author
+              show-empty
             >
+              <template #empty="scope">
+                <h6 class='text-secondary text-center'>There are no authors found</h6>
+              </template>
+              <template #emptyfiltered="scope">
+                <h6 class='text-secondary text-center'>Author not found</h6>
+              </template>
               <template #table-busy>
                 <div class="text-center text-danger my-2">
                   <b-spinner class="align-middle"></b-spinner>
@@ -73,7 +80,15 @@
               selectable
               @row-clicked="bookRowClicked"
               v-b-modal.edit-book
-            ></b-table>
+              show-empty
+            >
+              <template #empty="scope">
+                <h6 class='text-secondary text-center'>There are no books found</h6>
+              </template>
+              <template #emptyfiltered="scope">
+                <h6 class='text-secondary text-center'>Book not found</h6>
+              </template>
+            </b-table>
             <b-pagination
               class="justify-content-center mt-5"
               v-model="booksTableCurrentPage"
@@ -130,7 +145,14 @@
               selectable
               @row-clicked="bookRowClicked"
               v-b-modal.edit-book
+              show-empty
             >
+              <template #empty="scope">
+                <h6 class='text-secondary text-center'>There are no books</h6>
+              </template>
+              <template #emptyfiltered="scope">
+                <h6 class='text-secondary text-center'>Book not found</h6>
+              </template>
               <template #table-busy>
                 <div class="text-center text-danger my-2">
                   <b-spinner class="align-middle"></b-spinner>
@@ -184,13 +206,18 @@
               <b-form-input id="isbn" v-model="book.isbn" placeholder="ISBN"></b-form-input>
             </b-form-group>
             <b-form-group id="pages-group" label="Pages:" label-for="pages">
-              <b-form-input id="pages" placeholder="Pages" type='number' v-model="book.pages"></b-form-input>
+              <b-form-input id="pages" placeholder="Pages" type="number" v-model="book.pages"></b-form-input>
             </b-form-group>
             <b-form-group id="group-year" label="Publish Year:" label-for="year">
-              <b-form-input id="year" placeholder="Enter publish year" type='number' v-model="book.publish_year"></b-form-input>
+              <b-form-input
+                id="year"
+                placeholder="Enter publish year"
+                type="number"
+                v-model="book.publish_year"
+              ></b-form-input>
             </b-form-group>
             <b-form-group id="cost-group" label="Cost:" label-for="cost">
-              <b-form-input id="cost" placeholder="Cost" type='number' v-model="book.cost"></b-form-input>
+              <b-form-input id="cost" placeholder="Cost" type="number" v-model="book.cost"></b-form-input>
             </b-form-group>
           </b-form>
         </div>
@@ -627,7 +654,7 @@ export default {
           }
           if (this.saveThenRedirect) {
             this.saveThenRedirect = false;
-            this.authorModal = {}
+            this.authorModal = {};
             return await this.toggleTab('books');
           }
           return (this.authorModal = {});
